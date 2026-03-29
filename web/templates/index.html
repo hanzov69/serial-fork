@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Serial Registry — Home{% endblock %}
+
+{% block content %}
+<div class="hero">
+  <h1>Serial Registry</h1>
+  <p class="hero-subtitle">Tracking community builds, one serial at a time.</p>
+  <div class="stat-card">
+    <span class="stat-number">{{ total_active }}</span>
+    <span class="stat-label">Active Serials Issued</span>
+  </div>
+</div>
+
+{% if type_counts %}
+<div class="type-counts">
+  {% for pt, count in type_counts %}
+  <div class="type-count-card">
+    <a href="/serials?type_filter={{ pt.identifier }}">
+      <span class="type-count-id">{{ pt.identifier }}</span>
+      <span class="type-count-name">{{ pt.name }}</span>
+      <span class="type-count-num">{{ count }}</span>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<section class="recent-serials">
+  <h2>Recent Serials</h2>
+  {% if recent_serials %}
+    <div class="serial-grid">
+      {% for serial in recent_serials %}
+        {% include "partials/serial_card.html" %}
+      {% endfor %}
+    </div>
+    <div class="view-all">
+      <a href="/serials" class="btn">View All Serials &rarr;</a>
+    </div>
+  {% else %}
+    <p class="empty-state">No serials have been issued yet. Be the first!</p>
+  {% endif %}
+</section>
+{% endblock %}

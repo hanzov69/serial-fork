@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}My Requests — Serial Registry{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>My Serial Requests</h1>
+</div>
+
+<div class="info-banner" style="background:var(--surface-2);border-radius:6px;padding:0.75rem 1rem;margin-bottom:1.5rem;font-size:0.9rem;color:var(--text-muted)">
+  Serial requests must be started from Discord using <code>/request</code>.
+  You can update and re-submit rejected requests here.
+</div>
+
+{% if my_requests %}
+  <div class="queue-list">
+    {% for req in my_requests %}
+    <div class="queue-card status-{{ req.status }}">
+      <div class="queue-card-header">
+        <span class="queue-id">#{{ req.id }}</span>
+        <span class="queue-model">
+          <span class="badge">{{ req.printer_type.identifier }}</span>
+          {{ req.printer_type.name }}
+        </span>
+        <span class="badge badge-{{ req.status }}">{{ req.status }}</span>
+        <span class="queue-date">{{ req.submitted_at.strftime('%Y-%m-%d %H:%M UTC') }}</span>
+      </div>
+
+      <div class="queue-card-body">
+        {% if req.post_url %}
+          <p class="queue-notes">
+            <a href="{{ req.post_url }}" target="_blank" rel="noopener">View forum post ↗</a>
+          </p>
+        {% endif %}
+
+        {% if req.status == 'approved' and req.serial %}
+          <p class="serial-issued-notice">
+            Issued: <strong>{{ req.serial.printer_type.format_serial(req.serial.serial_number, settings.serial_pad_width) }}</strong>
+            — <a href="/serial/{{ req.printer_type.identifier }}/{{ req.serial.serial_number }}">View serial</a>
+          </p>
+        {% endif %}
+
+        {% if req.status == 'rejected' and req.rejection_reason %}
+          <div class="rejection-reason">
+            <strong>Rejection reason:</strong> {{ req.rejection_reason }}
+          </div>
+        {% endif %}
+      </div>
+
+      {% if req.status == 'rejected' %}
+      <div class="queue-card-actions">
+        <details class="resubmit-details">
+          <summary class="btn btn-sm">Update &amp; Re-submit</summary>
+          <form method="post" action="/my-requests/{{ req.id }}/resubmit"
+                style="margin-top:0.75rem;display:flex;flex-direction:column;gap:0.5rem"
+                onsubmit="return validateResubmit(this)">
+            <label style="font-size:0.85rem;color:var(--text-muted)">
+              Discord forum post URL (leave blank to keep existing)
+              <input type="url" name="post_url" value="{{ req.post_url or '' }}"
+                     placeholder="https://discord.com/channels/..." class="input-full">
+            </label>
+            <button type="submit" class="btn btn-primary btn-sm">
+              Re-submit
+            </button>
+          </form>
+        </details>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state-large">
+    <p>You have no serial requests. Use <code>/request</code> in Discord to get started.</p>
+  </div>
+{% endif %}
+
+<script>
+function validateResubmit(form) {
+  const url = form.querySelector('[name=post_url]').value.trim();
+  if (url && !url.includes('discord.com')) {
+    alert('Post URL must be a Discord link (must contain discord.com).');
+    return false;
+  }
+  return confirm('Re-submit this request for review?');
+}
+</script>
+<style>
+.status-approved { border-left: 3px solid var(--color-success, #3fb950); }
+.status-pending  { border-left: 3px solid var(--color-warning, #d29922); }
+.status-rejected { border-left: 3px solid var(--color-danger,  #f85149); }
+.rejection-reason {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(248, 81, 73, 0.1);
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+.resubmit-details summary { cursor: pointer; display: inline-block; }
+.resubmit-details summary::-webkit-details-marker { display: none; }
+.serial-issued-notice {
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  background: rgba(63, 185, 80, 0.1);
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+</style>
+{% endblock %}

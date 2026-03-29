@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}All Serials — Registry{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>All Serials</h1>
+  <span class="badge">{{ total }} total</span>
+</div>
+
+{# Type filter #}
+<div class="filter-bar">
+  <a href="/serials" class="btn btn-sm {{ 'btn-primary' if not type_filter }}">All</a>
+  {% for pt in printer_types %}
+    <a href="/serials?type_filter={{ pt.identifier }}"
+       class="btn btn-sm {{ 'btn-primary' if type_filter == pt.identifier }}">
+      {{ pt.identifier }} — {{ pt.name }}
+    </a>
+  {% endfor %}
+</div>
+
+<div class="serial-table-wrapper">
+  <table class="serial-table">
+    <thead>
+      <tr>
+        <th>Serial</th>
+        <th>Type</th>
+        <th>Holder</th>
+        <th>Issued</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for serial in serials %}
+      <tr class="{{ 'rescinded' if not serial.is_active }}">
+        <td>
+          <a href="/serial/{{ serial.printer_type.identifier }}/{{ serial.serial_number }}" class="mono">
+            {{ serial.display(settings.serial_pad_width) }}
+          </a>
+        </td>
+        <td>{{ serial.printer_type.name }}</td>
+        <td>
+          <div class="user-info">
+            <img src="{{ serial.holder.avatar_url }}" alt="" class="avatar-xs">
+            {{ serial.holder.username }}
+          </div>
+        </td>
+        <td>{{ serial.issued_at.strftime('%Y-%m-%d') }}</td>
+        <td>
+          {% if serial.is_active %}
+            <span class="badge badge-active">Active</span>
+          {% else %}
+            <span class="badge badge-rescinded">Rescinded</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5" class="empty-state">No serials found.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if total_pages > 1 %}
+<div class="pagination">
+  {% if page > 1 %}
+    <a href="/serials?page={{ page - 1 }}{% if type_filter %}&type_filter={{ type_filter }}{% endif %}" class="btn btn-sm">&larr; Prev</a>
+  {% endif %}
+  <span>Page {{ page }} of {{ total_pages }}</span>
+  {% if page < total_pages %}
+    <a href="/serials?page={{ page + 1 }}{% if type_filter %}&type_filter={{ type_filter }}{% endif %}" class="btn btn-sm">Next &rarr;</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

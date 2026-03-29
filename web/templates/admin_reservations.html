@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Serial Reservations — Registry{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Serial Reservations</h1>
+  <span class="badge">{{ reservations|length }} reserved</span>
+</div>
+
+<p class="muted" style="margin-bottom:1.5rem">
+  Reserved numbers are skipped during automatic assignment within their printer type.
+  Reservations are per-type: reserving <strong>BB-100</strong> does not affect <strong>CC-100</strong>.
+  Admins can still assign reserved numbers explicitly via the queue page or <code>/assign</code>.
+</p>
+
+<div class="detail-grid" style="grid-template-columns: 1fr 340px">
+  <div>
+    {% if reservations %}
+    <table class="serial-table">
+      <thead>
+        <tr>
+          <th>Serial</th>
+          <th>Reason</th>
+          <th>Reserved By</th>
+          <th>Date</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reservations %}
+        <tr>
+          <td class="mono">{{ r.printer_type.format_serial(r.serial_number, settings.serial_pad_width) }}</td>
+          <td>{{ r.reason or '—' }}</td>
+          <td>
+            <div class="user-info">
+              <img src="{{ r.reserved_by.avatar_url }}" alt="" class="avatar-xs">
+              {{ r.reserved_by.username }}
+            </div>
+          </td>
+          <td>{{ r.created_at.strftime('%Y-%m-%d') }}</td>
+          <td>
+            <form method="post" action="/admin/reservations/{{ r.id }}/delete"
+                  onsubmit="return confirm('Remove reservation for {{ r.printer_type.format_serial(r.serial_number, settings.serial_pad_width) }}?')">
+              <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">No reserved serial numbers.</div>
+    {% endif %}
+  </div>
+
+  <aside>
+    <div class="info-card">
+      <h3 style="margin-bottom:1rem; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted)">
+        Reserve a Number
+      </h3>
+      <form method="post" action="/admin/reservations" style="display:flex; flex-direction:column; gap:0.75rem">
+        <div>
+          <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:0.25rem">
+            Printer Type
+          </label>
+          <select name="printer_type_id" required class="input-full">
+            <option value="" disabled selected>Select type…</option>
+            {% for pt in printer_types %}
+            <option value="{{ pt.id }}">{{ pt.identifier }} — {{ pt.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:0.25rem">
+            Serial Number
+          </label>
+          <input type="number" name="serial_number" min="1" required
+                 class="input-full" placeholder="e.g. 100">
+        </div>
+        <div>
+          <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:0.25rem">
+            Reason <span class="muted">(optional)</span>
+          </label>
+          <input type="text" name="reason" maxlength="200"
+                 class="input-full" placeholder="e.g. Milestone number">
+        </div>
+        <button type="submit" class="btn btn-primary">Reserve</button>
+      </form>
+    </div>
+  </aside>
+</div>
+{% endblock %}

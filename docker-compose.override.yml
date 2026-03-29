@@ -1,0 +1,26 @@
+# Development overrides — auto-applied when running `docker compose up` locally.
+# Do NOT commit secrets here. Use .env for secrets.
+version: "3.9"
+
+services:
+  bot:
+    environment:
+      - DEBUG=true
+      - SYNC_COMMANDS=true
+    volumes:
+      - ./shared:/app/shared
+      - ./bot:/app/bot
+
+  web:
+    environment:
+      - DEBUG=true
+    volumes:
+      - ./shared:/app/shared
+      - ./web:/app/web
+    command: >
+      uvicorn web.main:app
+        --host 0.0.0.0
+        --port 8000
+        --reload
+        --reload-dir /app/web
+        --reload-dir /app/shared

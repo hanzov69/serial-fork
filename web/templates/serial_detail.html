@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% set display = serial.display(settings.serial_pad_width) %}
+
+{% block title %}{{ display }} — Serial Registry{% endblock %}
+
+{% block content %}
+<div class="detail-header">
+  <h1>
+    <span class="serial-number">{{ display }}</span>
+    {% if not serial.is_active %}
+      <span class="badge badge-rescinded">Rescinded</span>
+    {% endif %}
+  </h1>
+  <p class="printer-model">{{ serial.printer_type.name }}</p>
+</div>
+
+<div class="detail-grid">
+  <div class="detail-main">
+    {% if serial.request and serial.request.photo_url %}
+      <div class="build-photo">
+        <img src="{{ serial.request.photo_url }}" alt="Build photo for {{ display }}">
+      </div>
+    {% endif %}
+
+    {% if serial.request and serial.request.notes %}
+      <div class="detail-section">
+        <h3>Builder Notes</h3>
+        <p>{{ serial.request.notes }}</p>
+      </div>
+    {% endif %}
+
+    {% if not serial.is_active %}
+      <div class="detail-section rescind-info">
+        <h3>Rescinded</h3>
+        <p><strong>Date:</strong> {{ serial.rescinded_at.strftime('%Y-%m-%d') }}</p>
+        {% if serial.rescinded_by %}
+          <p><strong>By:</strong> {{ serial.rescinded_by.username }}</p>
+        {% endif %}
+        {% if serial.rescind_reason %}
+          <p><strong>Reason:</strong> {{ serial.rescind_reason }}</p>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if current_user and current_user.is_admin and serial.is_active %}
+      <div class="detail-section admin-actions">
+        <h3>Admin Actions</h3>
+        <form method="post" action="/admin/serials/{{ serial.id }}/rescind"
+              onsubmit="return confirm('Rescind {{ display }}? This cannot be undone.')">
+          <input type="text" name="reason" placeholder="Reason for rescinding" required class="input-full">
+          <button type="submit" class="btn btn-danger" style="margin-top:0.5rem">Rescind Serial</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+
+  <aside class="detail-sidebar">
+    <div class="info-card">
+      <div class="info-row">
+        <span class="info-label">Serial</span>
+        <span class="info-value mono">{{ display }}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Type</span>
+        <span class="info-value">
+          <a href="/serials?type_filter={{ serial.printer_type.identifier }}">
+            {{ serial.printer_type.name }}
+          </a>
+        </span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Holder</span>
+        <div class="info-value user-info">
+          <img src="{{ serial.holder.avatar_url }}" alt="" class="avatar-sm">
+          {{ serial.holder.username }}
+        </div>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Issued</span>
+        <span class="info-value">{{ serial.issued_at.strftime('%Y-%m-%d') }}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Approved by</span>
+        <span class="info-value">{{ serial.issued_by.username }}</span>
+      </div>
+    </div>
+
+    <a href="/serials" class="btn btn-sm back-link" style="margin-top:1rem; display:inline-block">&larr; All Serials</a>
+  </aside>
+</div>
+{% endblock %}

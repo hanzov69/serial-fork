@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}User Management — Serial Registry{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>User Management</h1>
+</div>
+
+<table class="serial-table">
+  <thead>
+    <tr>
+      <th>User</th>
+      <th>Discord ID</th>
+      <th>Role</th>
+      <th>Joined</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for user in users %}
+    <tr>
+      <td>
+        <div class="user-info">
+          <img src="{{ user.avatar_url }}" alt="" class="avatar-xs">
+          {{ user.username }}
+        </div>
+      </td>
+      <td class="mono">{{ user.discord_id }}</td>
+      <td>
+        <span class="badge badge-{{ user.role }}">{{ user.role }}</span>
+      </td>
+      <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+      <td>
+        {% if user.role == 'owner' %}
+          {# Owner row — protected, cannot be changed by anyone except via transfer #}
+          {% if current_user.is_owner and user.id != current_user.id %}
+            {# Current user is owner looking at another owner? Shouldn't happen, but guard it #}
+            <span class="muted">(owner)</span>
+          {% else %}
+            <span class="muted">(protected)</span>
+          {% endif %}
+        {% elif user.id == current_user.id %}
+          <span class="muted">(you)</span>
+        {% else %}
+          <form method="post" action="/admin/users/{{ user.id }}/role" style="display:inline-flex; gap:0.5rem">
+            <select name="role" class="select-sm">
+              <option value="user" {{ 'selected' if user.role == 'user' }}>user</option>
+              <option value="moderator" {{ 'selected' if user.role == 'moderator' }}>moderator</option>
+              <option value="admin" {{ 'selected' if user.role == 'admin' }}>admin</option>
+            </select>
+            <button type="submit" class="btn btn-sm">Save</button>
+          </form>
+          {# Transfer ownership button — only shown to the owner, and only for admins #}
+          {% if current_user.is_owner and user.role == 'admin' %}
+            <form method="post" action="/admin/users/{{ user.id }}/transfer-ownership" style="display:inline"
+                  onsubmit="return confirm('Transfer Owner role to {{ user.username }}? You will become an admin.')">
+              <button type="submit" class="btn btn-sm btn-danger" style="margin-left:0.5rem">Transfer Ownership</button>
+            </form>
+          {% endif %}
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,11 @@
+<div class="serial-card {{ 'rescinded' if not serial.is_active }}">
+  <a href="/serial/{{ serial.printer_type.identifier }}/{{ serial.serial_number }}">
+    <div class="serial-card-number">{{ serial.display(settings.serial_pad_width) }}</div>
+    <div class="serial-card-model">{{ serial.printer_type.name }}</div>
+    <div class="serial-card-meta">
+      <img src="{{ serial.holder.avatar_url }}" alt="" class="avatar-xs">
+      <span>{{ serial.holder.username }}</span>
+      <span class="muted">· {{ serial.issued_at.strftime('%Y-%m-%d') }}</span>
+    </div>
+  </a>
+</div>

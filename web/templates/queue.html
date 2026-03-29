@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Review Queue — Registry{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Serial Request Queue</h1>
+  <span class="badge">{{ pending_requests|length }} pending</span>
+</div>
+
+{% if pending_requests %}
+  <div class="queue-list">
+    {% for req in pending_requests %}
+    <div class="queue-card">
+      <div class="queue-card-header">
+        <span class="queue-id">#{{ req.id }}</span>
+        <span class="queue-model">
+          <span class="badge">{{ req.printer_type.identifier }}</span>
+          {{ req.printer_type.name }}
+        </span>
+        <span class="queue-date">{{ req.submitted_at.strftime('%Y-%m-%d %H:%M UTC') }}</span>
+      </div>
+
+      <div class="queue-card-body">
+        <div class="requester-info">
+          <img src="{{ req.requester.avatar_url }}" alt="" class="avatar-sm">
+          <span>{{ req.requester.username }}</span>
+        </div>
+
+        {% if req.post_url %}
+          <p class="queue-notes">
+            <a href="{{ req.post_url }}" target="_blank" rel="noopener">View forum post ↗</a>
+          </p>
+        {% endif %}
+      </div>
+
+      <div class="queue-card-actions">
+        {# Standard approve — auto-assigns next available number for this printer type #}
+        <form method="post" action="/admin/approve/{{ req.id }}" style="display:inline">
+          <button type="submit" class="btn btn-success"
+                  onclick="return confirm('Approve as next {{ req.printer_type.identifier }} serial?')">
+            Approve
+          </button>
+        </form>
+
+        {# Assign a specific serial number (admin only) #}
+        {% if current_user.is_admin %}
+        <form method="post" action="/admin/assign/{{ req.id }}"
+              style="display:inline-flex; align-items:center; gap:0.4rem"
+              onsubmit="return validateAssign(this, '{{ req.printer_type.identifier }}')">
+          <span class="mono muted" style="font-size:0.8rem">{{ req.printer_type.identifier }}-</span>
+          <input type="number" name="serial_number" min="1" placeholder="###"
+                 class="input-sm" style="width:80px">
+          <button type="submit" class="btn btn-sm" title="Assign this specific number">Assign #</button>
+        </form>
+        {% endif %}
+
+        {# Reject #}
+        <form method="post" action="/admin/reject/{{ req.id }}" style="display:inline"
+              onsubmit="return submitRejectPrompt(this)">
+          <input type="hidden" name="reason" value="">
+          <button type="button" class="btn btn-danger btn-sm"
+                  onclick="submitRejectPrompt(this.form)">
+            Reject
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state-large">
+    <p>No pending requests. The queue is clear!</p>
+  </div>
+{% endif %}
+
+{% if current_user.is_admin and rejected_requests %}
+<div class="page-header" style="margin-top:2.5rem">
+  <h2>Rejected Requests</h2>
+  <span class="badge badge-danger">{{ rejected_requests|length }}</span>
+</div>
+<div class="queue-list">
+  {% for req in rejected_requests %}
+  <div class="queue-card" style="border-color: var(--color-danger-muted, #5c2020)">
+    <div class="queue-card-header">
+      <span class="queue-id">#{{ req.id }}</span>
+      <span class="queue-model">
+        <span class="badge">{{ req.printer_type.identifier }}</span>
+        {{ req.printer_type.name }}
+      </span>
+      <span class="queue-date">Rejected {{ req.reviewed_at.strftime('%Y-%m-%d') if req.reviewed_at else '—' }}</span>
+    </div>
+    <div class="queue-card-body">
+      <div class="requester-info">
+        <img src="{{ req.requester.avatar_url }}" alt="" class="avatar-sm">
+        <span>{{ req.requester.username }}</span>
+      </div>
+      {% if req.rejection_reason %}
+        <p class="queue-notes"><strong>Rejection reason:</strong> {{ req.rejection_reason }}</p>
+      {% endif %}
+    </div>
+    <div class="queue-card-actions">
+      <form method="post" action="/admin/requests/{{ req.id }}/delete" style="display:inline"
+            onsubmit="return confirm('Permanently delete request #{{ req.id }}? This cannot be undone.')">
+        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<script>
+function submitRejectPrompt(form) {
+  const reason = prompt('Reason for rejection (optional, shown to requester):') ?? '';
+  form.querySelector('[name=reason]').value = reason;
+  form.submit();
+}
+function validateAssign(form, identifier) {
+  const val = form.querySelector('[name=serial_number]').value;
+  if (!val || parseInt(val) < 1) {
+    alert('Please enter a valid serial number.');
+    return false;
+  }
+  return confirm('Assign ' + identifier + '-' + String(val).padStart(3, '0') + ' to this request?');
+}
+</script>
+{% endblock %}

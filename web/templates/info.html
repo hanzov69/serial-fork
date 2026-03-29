@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Info — BB-Serial Registry{% endblock %}
+
+{% block content %}
+<div class="info-page">
+
+  <!-- ═══════════════════════════════════════════════════════
+       HOW TO REQUEST A SERIAL NUMBER
+       Edit the steps below to update the instructions.
+  ════════════════════════════════════════════════════════ -->
+  <section class="info-section">
+    <h2 class="info-section-title">How to Request a Serial Number</h2>
+    <ol class="info-steps">
+      <li>Join the Discord server using the invite link below.</li>
+      <li>Complete your build and post about it in the designated build showcase forum channel.</li>
+      <li>Copy the link to your forum post — it must be a <code>discord.com</code> link.</li>
+      <li>In any bot-enabled channel, run <code>/request</code>, choose your printer type, and paste your forum post link.</li>
+      <li>A moderator will review your submission. You will receive a direct message when it is approved or rejected.</li>
+      <li>If rejected, you can update your post and re-submit using <code>/resubmit</code> or the <em>My Requests</em> page.</li>
+    </ol>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════
+       ABOUT
+       Edit the paragraph and Discord invite URL below.
+  ════════════════════════════════════════════════════════ -->
+  <section class="info-section">
+    <h2 class="info-section-title">About</h2>
+    <p class="info-body">
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque habitant morbi tristique
+      senectus et netus et malesuada fames ac turpis egestas. Vestibulum tortor quam, feugiat vitae,
+      ultricies eget, tempor sit amet, ante. Donec eu libero sit amet quam egestas semper. Aenean
+      ultricies mi vitae est. Mauris placerat eleifend leo. Quisque sit amet est et sapien ullamcorper
+      pharetra. Vestibulum erat wisi, condimentum sed, commodo vitae, ornare sit amet, wisi.
+    </p>
+
+    {# ── Replace the href below with your real Discord invite link ── #}
+    <a href="https://discord.gg/REPLACEME" target="_blank" rel="noopener" class="btn btn-primary discord-btn">
+      Join Our Discord
+    </a>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════
+       CREDITS
+       Add, remove, or edit entries in the list below.
+  ════════════════════════════════════════════════════════ -->
+  <section class="info-section">
+    <h2 class="info-section-title">Credits</h2>
+    <ul class="info-credits">
+      <li><a href="#" target="_blank" rel="noopener">Contributor / Project Name</a> — brief description</li>
+      <li><a href="#" target="_blank" rel="noopener">Contributor / Project Name</a> — brief description</li>
+      <li><a href="#" target="_blank" rel="noopener">Contributor / Project Name</a> — brief description</li>
+    </ul>
+  </section>
+
+</div>
+
+<style>
+.info-page {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  padding-top: 1rem;
+}
+
+.info-section-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin-bottom: 1.1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--accent);
+  display: inline-block;
+}
+
+.info-steps {
+  list-style: none;
+  counter-reset: steps;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.info-steps li {
+  counter-increment: steps;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.info-steps li::before {
+  content: counter(steps);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #0a0c14;
+  font-weight: 800;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  margin-top: 0.1rem;
+}
+
+.info-body {
+  font-size: 0.95rem;
+  line-height: 1.8;
+  color: var(--text);
+  margin-bottom: 1.5rem;
+}
+
+.discord-btn {
+  font-size: 0.95rem;
+  padding: 0.6rem 1.4rem;
+}
+
+.info-credits {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-left: 0;
+}
+.info-credits li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+}
+.info-credits li::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+</style>
+{% endblock %}
