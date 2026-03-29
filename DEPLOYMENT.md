@@ -176,8 +176,8 @@ Every setting can be placed in `config.toml` (snake_case key) or set as an envir
 |---|---|---|---|
 | `web_secret_key` | `WEB_SECRET_KEY` | **Required** | Random secret used to sign session cookies. Generate with `python -c "import secrets; print(secrets.token_hex(32))"` |
 | `web_base_url` | `WEB_BASE_URL` | `http://localhost:8000` | Public base URL of the web app (no trailing slash). This value is used **directly** to construct the OAuth2 redirect URI (`web_base_url + /auth/callback`) — no port is ever appended automatically. Behind a reverse proxy use the public URL without a port (e.g. `https://serials.yoursite.com`). For direct/local access include the port explicitly (e.g. `http://localhost:8000`). Must exactly match a redirect URI registered in Discord. |
-| `web_host` | `WEB_HOST` | `0.0.0.0` | Network interface for the web server to bind to. Use `0.0.0.0` to accept external connections or `127.0.0.1` for localhost-only (e.g. behind a local reverse proxy). |
-| `web_port` | `WEB_PORT` | `8000` | TCP port the web server listens on. |
+| `web_host` | `WEB_HOST` | `0.0.0.0` | Internal network interface for the web server to bind to. **Does not affect public URLs or OAuth.** Use `0.0.0.0` in containers/k8s; `127.0.0.1` for localhost-only behind a local reverse proxy. |
+| `web_port` | `WEB_PORT` | `8000` | Internal TCP port the web server listens on. **Does not affect public URLs or OAuth.** The ingress/reverse proxy maps the public port (80/443) to this value. |
 
 #### Database
 

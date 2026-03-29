@@ -11,10 +11,11 @@ data:
   DISCORD_MOD_NOTIFY_CHANNEL_ID: {{ .Values.discord.modNotifyChannelId | quote }}
   DISCORD_CLIENT_ID: {{ .Values.discord.clientId | quote }}
 
-  # ── Web app ─────────────────────────────────────────────────────────
+  # ── Web app (public URL — controls OAuth2 redirect URI) ─────────────
   WEB_BASE_URL: {{ .Values.web.baseUrl | quote }}
-  WEB_HOST: "0.0.0.0"
-  WEB_PORT: {{ .Values.web.port | quote }}
+  # ── Server (internal bind — does NOT affect OAuth2 or any public URL) ─
+  WEB_HOST: {{ .Values.server.host | quote }}
+  WEB_PORT: {{ .Values.server.port | quote }}
 
   # ── Database ────────────────────────────────────────────────────────
   DB_PATH: "/data/bb_serial.db"

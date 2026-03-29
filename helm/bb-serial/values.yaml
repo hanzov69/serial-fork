@@ -27,18 +27,28 @@ discord:
   # Discord application client ID (OAuth2)
   clientId: ""
 
-# ── Web app ──────────────────────────────────────────────────────────
+# ── Web app (public-facing) ───────────────────────────────────────────
 web:
   # Public base URL used for OAuth2 redirect URIs and outbound links.
-  # This value is used directly — no port is injected automatically.
-  # - Behind a reverse proxy: use the public URL with no port
-  #   e.g. https://serials.yourdomain.com
-  # - Local / direct access: include the port explicitly
-  #   e.g. http://localhost:8000
-  # No trailing slash. Must exactly match the redirect URI registered in
+  # This value is used DIRECTLY — no port is ever injected automatically.
+  # - Behind an ingress / reverse proxy: no port
+  #     e.g. https://serials.yourdomain.com
+  # - Direct access (local dev): include the port explicitly
+  #     e.g. http://localhost:8000
+  # No trailing slash. Must exactly match a redirect URI registered in
   # the Discord Developer Portal → OAuth2 → Redirects (append /auth/callback).
   baseUrl: "http://localhost:8000"
+
+# ── Server (internal) ────────────────────────────────────────────────
+# These settings control where uvicorn binds INSIDE the container.
+# They have NO effect on the OAuth callback URL or any public URL —
+# that is controlled entirely by web.baseUrl above.
+server:
+  # Port uvicorn listens on inside the pod. The Service and Ingress handle
+  # the external port mapping (80/443 → this port). Change only if another
+  # workload already occupies 8000 on the node.
   port: 8000
+  host: "0.0.0.0"
 
 # ── Secrets ──────────────────────────────────────────────────────────
 # Option A: let the chart create a Secret from these values.
