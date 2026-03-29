@@ -1,0 +1,15 @@
+apiVersion: v2
+name: bb-serial
+description: Serial number registry for 3D printer maker communities (Discord bot + web app)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - discord
+  - 3d-printing
+  - serial-registry
+sources:
+  - https://github.com/hanzov69/bb-serial
+maintainers:
+  - name: hanzov69
+    url: https://github.com/hanzov69

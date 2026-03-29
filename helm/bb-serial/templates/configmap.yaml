@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "bb-serial.fullname" . }}
+  labels:
+    {{- include "bb-serial.labels" . | nindent 4 }}
+data:
+  # ── Discord (non-secret) ────────────────────────────────────────────
+  DISCORD_GUILD_ID: {{ .Values.discord.guildId | quote }}
+  DISCORD_REQUEST_CHANNEL_ID: {{ .Values.discord.requestChannelId | quote }}
+  DISCORD_MOD_NOTIFY_CHANNEL_ID: {{ .Values.discord.modNotifyChannelId | quote }}
+  DISCORD_CLIENT_ID: {{ .Values.discord.clientId | quote }}
+
+  # ── Web app ─────────────────────────────────────────────────────────
+  WEB_BASE_URL: {{ .Values.web.baseUrl | quote }}
+  WEB_HOST: "0.0.0.0"
+  WEB_PORT: {{ .Values.web.port | quote }}
+
+  # ── Database ────────────────────────────────────────────────────────
+  DB_PATH: "/data/bb_serial.db"
+
+  # ── App behaviour ───────────────────────────────────────────────────
+  SERIAL_PAD_WIDTH: {{ .Values.config.serialPadWidth | quote }}
+  REJECTED_REQUEST_PURGE_DAYS: {{ .Values.config.rejectedRequestPurgeDays | quote }}
+  SYNC_COMMANDS: {{ .Values.config.syncCommands | quote }}
+  DEBUG: {{ .Values.config.debug | quote }}
+
+  # ── Bootstrap owner ─────────────────────────────────────────────────
+  {{- if .Values.initialOwner.discordId }}
+  INITIAL_OWNER_DISCORD_ID: {{ .Values.initialOwner.discordId | quote }}
+  INITIAL_OWNER_USERNAME: {{ .Values.initialOwner.username | quote }}
+  {{- end }}

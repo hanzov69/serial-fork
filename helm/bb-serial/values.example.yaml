@@ -1,0 +1,47 @@
+# Example production values — copy to my-values.yaml and fill in.
+# DO NOT commit secrets to version control.
+# Use --set flags, a sealed-secrets provider, or an existingSecret instead.
+
+image:
+  bot:
+    repository: ghcr.io/hanzov69/bb-serial-bot
+    tag: "0.1.0"          # pin to a specific tag in production
+  web:
+    repository: ghcr.io/hanzov69/bb-serial-web
+    tag: "0.1.0"
+
+discord:
+  guildId: "YOUR_GUILD_ID"
+  requestChannelId: "YOUR_REQUEST_CHANNEL_ID"
+  modNotifyChannelId: "YOUR_MOD_NOTIFY_CHANNEL_ID"
+  clientId: "YOUR_DISCORD_CLIENT_ID"
+
+web:
+  baseUrl: "https://serials.yourdomain.com"
+
+# Option A — let the chart manage the secret:
+secrets:
+  discordToken: "your-bot-token"
+  discordClientSecret: "your-client-secret"
+  webSecretKey: "generate-with: python -c \"import secrets; print(secrets.token_hex(32))\""
+
+# Option B — reference a pre-existing secret (e.g. via External Secrets Operator):
+# secrets:
+#   existingSecret: "bb-serial-secrets"
+
+initialOwner:
+  discordId: "YOUR_DISCORD_USER_ID"
+  username: "YourName"
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  host: "serials.yourdomain.com"
+  tls:
+    enabled: true
+    secretName: "bb-serial-tls"
+
+persistence:
+  size: 2Gi

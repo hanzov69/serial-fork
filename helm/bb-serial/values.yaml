@@ -1,0 +1,123 @@
+# BB-Serial Helm Chart — default values
+# Override any of these in your own values file or with --set flags.
+
+# -- Container images
+image:
+  bot:
+    repository: ghcr.io/hanzov69/bb-serial-bot
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  web:
+    repository: ghcr.io/hanzov69/bb-serial-web
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+# -- Image pull secrets (for private registries)
+imagePullSecrets: []
+
+# ── Discord ─────────────────────────────────────────────────────────
+# Non-secret Discord settings (IDs, not tokens)
+discord:
+  # The Guild (server) ID where the bot operates
+  guildId: ""
+  # Channel where users post /request commands
+  requestChannelId: ""
+  # Channel where mods receive approval notifications
+  modNotifyChannelId: ""
+  # Discord application client ID (OAuth2)
+  clientId: ""
+
+# ── Web app ──────────────────────────────────────────────────────────
+web:
+  # Public base URL — must match the registered Discord OAuth2 redirect URI.
+  # Example: https://serials.yourdomain.com
+  baseUrl: "http://localhost:8000"
+  port: 8000
+
+# ── Secrets ──────────────────────────────────────────────────────────
+# Option A: let the chart create a Secret from these values.
+# Option B: create your own Secret and set existingSecret to its name;
+#           the chart will reference it instead of creating one.
+#           The existing secret must contain the keys:
+#             DISCORD_TOKEN, DISCORD_CLIENT_SECRET, WEB_SECRET_KEY
+secrets:
+  # Set to the name of a pre-existing Secret to skip Secret creation.
+  existingSecret: ""
+  # Plaintext values — only used when existingSecret is empty.
+  # Prefer passing these via --set or a separate secrets values file
+  # that is NOT committed to version control.
+  discordToken: ""
+  discordClientSecret: ""
+  webSecretKey: ""
+
+# ── Bootstrap owner ───────────────────────────────────────────────────
+# Idempotent: safe to leave set permanently after first deploy.
+initialOwner:
+  discordId: ""
+  username: "Owner"
+
+# ── App configuration ─────────────────────────────────────────────────
+config:
+  serialPadWidth: 3
+  rejectedRequestPurgeDays: 30
+  # Set to true only during initial deploy to sync Discord slash commands,
+  # then back to false to avoid hitting Discord rate limits on every restart.
+  syncCommands: false
+  debug: false
+
+# ── Persistence (SQLite database) ────────────────────────────────────
+# The bot and web containers run in the same pod and share this volume.
+# ReadWriteOnce is sufficient (single pod).
+persistence:
+  enabled: true
+  # Leave empty to use the cluster's default StorageClass.
+  storageClass: ""
+  size: 1Gi
+  accessMode: ReadWriteOnce
+  # Override to use an existing PVC instead of creating one.
+  existingClaim: ""
+
+# ── Service ───────────────────────────────────────────────────────────
+service:
+  type: ClusterIP
+  port: 80
+
+# ── Ingress ───────────────────────────────────────────────────────────
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+    # nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+  host: "serials.yourdomain.com"
+  tls:
+    enabled: false
+    secretName: "bb-serial-tls"
+
+# ── Resources ─────────────────────────────────────────────────────────
+resources:
+  bot:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  web:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# ── Pod settings ──────────────────────────────────────────────────────
+podAnnotations: {}
+
+# fsGroup must match the GID of the non-root user in the Dockerfiles (appuser).
+podSecurityContext:
+  fsGroup: 999
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

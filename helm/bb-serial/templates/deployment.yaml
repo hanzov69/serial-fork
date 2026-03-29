@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bb-serial.fullname" . }}
+  labels:
+    {{- include "bb-serial.labels" . | nindent 4 }}
+spec:
+  # SQLite does not support concurrent writers across multiple pods.
+  # Keep replicas at 1. To scale, migrate to PostgreSQL first.
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "bb-serial.selectorLabels" . | nindent 6 }}
+  strategy:
+    # Recreate avoids two pods holding the SQLite write lock simultaneously
+    # during a rolling update.
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        {{- include "bb-serial.selectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      containers:
+
+        # ── Web (FastAPI + uvicorn) ──────────────────────────────────
+        - name: web
+          image: "{{ .Values.image.web.repository }}:{{ .Values.image.web.tag }}"
+          imagePullPolicy: {{ .Values.image.web.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.web.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "bb-serial.fullname" . }}
+            - secretRef:
+                name: {{ include "bb-serial.secretName" . }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources.web | nindent 12 }}
+
+        # ── Bot (discord.py) ─────────────────────────────────────────
+        - name: bot
+          image: "{{ .Values.image.bot.repository }}:{{ .Values.image.bot.tag }}"
+          imagePullPolicy: {{ .Values.image.bot.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "bb-serial.fullname" . }}
+            - secretRef:
+                name: {{ include "bb-serial.secretName" . }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          # The bot has no HTTP port to probe; use a simple process check.
+          livenessProbe:
+            exec:
+              command: ["pgrep", "-f", "bot.main"]
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources.bot | nindent 12 }}
+
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "bb-serial.pvcName" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
