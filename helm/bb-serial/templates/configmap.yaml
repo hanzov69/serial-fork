@@ -22,6 +22,7 @@ data:
   # ── App behaviour ───────────────────────────────────────────────────
   SERIAL_PAD_WIDTH: {{ .Values.config.serialPadWidth | quote }}
   REJECTED_REQUEST_PURGE_DAYS: {{ .Values.config.rejectedRequestPurgeDays | quote }}
+  BACKUP_ALLOW_ADMIN: {{ .Values.config.backupAllowAdmin | quote }}
   SYNC_COMMANDS: {{ .Values.config.syncCommands | quote }}
   DEBUG: {{ .Values.config.debug | quote }}
 

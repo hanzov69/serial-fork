@@ -88,6 +88,12 @@ class Settings(BaseSettings):
         description="Auto-delete rejected requests older than this many days (0 = disabled)",
     )
 
+    # --- Backup ---
+    backup_allow_admin: bool = Field(
+        default=False,
+        description="Allow admin-role users to download a database backup (owner can always download)",
+    )
+
     # --- Dev helpers ---
     sync_commands: bool = Field(
         default=False,

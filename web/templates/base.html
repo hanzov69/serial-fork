@@ -30,6 +30,9 @@
         <a href="/admin/reservations">Reservations</a>
         <a href="/admin/users">Users</a>
       {% endif %}
+      {% if current_user and (current_user.is_owner or (current_user.is_admin and request.app.state.settings.backup_allow_admin)) %}
+        <a href="/admin/backup">Backup</a>
+      {% endif %}
     </div>
     <div class="nav-user">
       {% if current_user %}

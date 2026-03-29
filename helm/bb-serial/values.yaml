@@ -64,6 +64,9 @@ config:
   # then back to false to avoid hitting Discord rate limits on every restart.
   syncCommands: false
   debug: false
+  # Allow admin-role users to download a database backup.
+  # Owner can always download regardless of this setting.
+  backupAllowAdmin: false
 
 # ── Persistence (SQLite database) ────────────────────────────────────
 # The bot and web containers run in the same pod and share this volume.

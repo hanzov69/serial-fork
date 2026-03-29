@@ -78,3 +78,16 @@ async def require_owner(
     if not current_user.is_owner:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Owner access required")
     return current_user
+
+
+async def require_backup_access(
+    request: Request,
+    current_user: User = Depends(require_user),
+) -> User:
+    """Owner always; admins only when backup_allow_admin is enabled in config."""
+    if current_user.is_owner:
+        return current_user
+    settings = request.app.state.settings
+    if current_user.is_admin and settings.backup_allow_admin:
+        return current_user
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Backup access denied")

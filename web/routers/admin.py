@@ -3,12 +3,16 @@ Moderator and admin routes: review queue, user management, reservations, printer
 """
 from __future__ import annotations
 
+import asyncio
 import logging
+import os
 import re
+import sqlite3
+import tempfile
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -24,7 +28,7 @@ from shared.models import (
     User,
     UserRole,
 )
-from web.deps import get_db, require_admin, require_moderator, require_owner
+from web.deps import get_db, require_admin, require_backup_access, require_moderator, require_owner
 from web.discord_notify import notify_approved, notify_rejected
 
 log = logging.getLogger(__name__)
@@ -558,3 +562,55 @@ async def delete_reservation(
         raise HTTPException(status_code=404, detail="Reservation not found")
     await db.delete(reservation)
     return RedirectResponse("/admin/reservations", status_code=303)
+
+
+# ------------------------------------------------------------------
+# Database backup (owner always; admin if backup_allow_admin enabled)
+# ------------------------------------------------------------------
+
+def _hot_backup(db_path: str) -> bytes:
+    """
+    Use SQLite's built-in online backup API to create a consistent snapshot
+    of the database, safe to run while other connections are active (WAL mode).
+    Returns the raw SQLite file bytes.
+    """
+    tmp_fd, tmp_path = tempfile.mkstemp(suffix=".db")
+    os.close(tmp_fd)
+    try:
+        src = sqlite3.connect(db_path)
+        dst = sqlite3.connect(tmp_path)
+        try:
+            src.backup(dst)
+        finally:
+            src.close()
+            dst.close()
+        with open(tmp_path, "rb") as f:
+            return f.read()
+    finally:
+        os.unlink(tmp_path)
+
+
+@router.get("/admin/backup")
+async def download_backup(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_backup_access),
+):
+    """Download a hot backup of the SQLite database as a binary file."""
+    db_path = request.app.state.settings.db_path
+    loop = asyncio.get_event_loop()
+    data = await loop.run_in_executor(None, _hot_backup, db_path)
+
+    db.add(AuditLog(
+        actor_id=current_user.id,
+        action="backup",
+        details=f"database backup downloaded by {current_user.username}",
+    ))
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    filename = f"bb_serial_backup_{timestamp}.db"
+    return Response(
+        content=data,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
