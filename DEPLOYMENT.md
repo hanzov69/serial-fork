@@ -106,7 +106,13 @@ cd bb-serial
 
 ## 4. Configuration
 
-The application reads configuration from two files: `config.toml` (non-secret settings) and `.env` (secrets). Environment variables always override `config.toml` values.
+The application reads configuration from two files: `config.toml` (non-secret settings) and `.env` (secrets). Environment variables always override `config.toml` values, which in turn override built-in defaults.
+
+Load order (highest → lowest priority):
+1. Environment variables
+2. `.env` file
+3. `config.toml`
+4. Built-in defaults
 
 ### 4a. Create `config.toml`
 
@@ -114,32 +120,7 @@ The application reads configuration from two files: `config.toml` (non-secret se
 cp config.toml.example config.toml
 ```
 
-Edit `config.toml` and fill in your values:
-
-```toml
-# Your Discord server ID
-discord_guild_id = 1234567890123456789
-
-# Channel where users submit serial requests
-discord_request_channel_id = 1234567890123456789
-
-# Channel where mods receive approval notifications
-discord_mod_notify_channel_id = 1234567890123456789
-
-# Your Discord Application ID (not the bot token)
-discord_client_id = "1234567890123456789"
-
-# Public URL of the web app (used in OAuth2 redirect)
-web_base_url = "http://localhost:8000"
-
-# Serial number display: prefix and minimum digit width
-serial_prefix = "BB"       # serials display as BB-001, BB-042, BB-1000
-serial_pad_width = 3       # minimum 3 digits; expands automatically
-
-# Leave these false in production
-sync_commands = false
-debug = false
-```
+Edit `config.toml` and fill in your values. The table below documents every available setting.
 
 ### 4b. Create `.env`
 
@@ -167,6 +148,75 @@ python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
 > **Security:** Never commit `.env` or `config.toml` to version control. Both are in `.gitignore` by default.
+
+### 4c. Complete Configuration Reference
+
+Every setting can be placed in `config.toml` (snake_case key) or set as an environment variable (UPPER_CASE). Environment variables always win.
+
+#### Discord — Bot
+
+| Setting | Env var | Required | Description |
+|---|---|---|---|
+| `discord_token` | `DISCORD_TOKEN` | **Yes** | Bot token from Discord Developer Portal → Bot → Token |
+| `discord_guild_id` | `DISCORD_GUILD_ID` | **Yes** | Numeric ID of the Discord server the bot operates in |
+| `discord_request_channel_id` | `DISCORD_REQUEST_CHANNEL_ID` | **Yes** | Channel where users submit `/request` commands |
+| `discord_mod_notify_channel_id` | `DISCORD_MOD_NOTIFY_CHANNEL_ID` | **Yes** | Channel where moderators receive approval notification embeds |
+
+#### Discord — OAuth2 (web login)
+
+| Setting | Env var | Required | Description |
+|---|---|---|---|
+| `discord_client_id` | `DISCORD_CLIENT_ID` | **Yes** | Application ID from Discord Developer Portal → General Information |
+| `discord_client_secret` | `DISCORD_CLIENT_SECRET` | **Yes** | Client secret from Discord Developer Portal → OAuth2 |
+
+#### Web Application
+
+| Setting | Env var | Default | Description |
+|---|---|---|---|
+| `web_secret_key` | `WEB_SECRET_KEY` | **Required** | Random secret used to sign session cookies. Generate with `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `web_base_url` | `WEB_BASE_URL` | `http://localhost:8000` | Public base URL of the web app (no trailing slash). Must match the OAuth2 redirect URI registered in Discord. Include port if non-standard (e.g. `http://localhost:8000`). |
+| `web_host` | `WEB_HOST` | `0.0.0.0` | Network interface for the web server to bind to. Use `0.0.0.0` to accept external connections or `127.0.0.1` for localhost-only (e.g. behind a local reverse proxy). |
+| `web_port` | `WEB_PORT` | `8000` | TCP port the web server listens on. |
+
+#### Database
+
+| Setting | Env var | Default | Description |
+|---|---|---|---|
+| `db_path` | `DB_PATH` | `/data/bb_serial.db` | Absolute path to the SQLite database file. In Docker, this should be inside the named volume (e.g. `/data/bb_serial.db`). Change only if you have a custom volume mount. |
+
+#### Serial Number Display
+
+| Setting | Env var | Default | Description |
+|---|---|---|---|
+| `serial_pad_width` | `SERIAL_PAD_WIDTH` | `3` | Minimum digit width for all serial numbers. `3` → `BB-001`; `4` → `BB-0001`. The number automatically expands beyond the pad width (e.g. serial 1000 displays as `BB-1000` with `serial_pad_width = 3`). Serial prefixes are set per printer type via `/addprinter` or the web UI. |
+
+#### Bootstrap Owner
+
+These settings are used **once** on first startup to create the initial owner account. They are safe to leave set permanently — if an owner already exists in the database, they are ignored.
+
+| Setting | Env var | Default | Description |
+|---|---|---|---|
+| `initial_owner_discord_id` | `INITIAL_OWNER_DISCORD_ID` | _(none)_ | Discord user ID of the first owner. If set and no owner exists yet, this user is automatically created with the Owner role on startup. Right-click your username in Discord (Developer Mode on) to copy your ID. |
+| `initial_owner_username` | `INITIAL_OWNER_USERNAME` | `Owner` | Display name stored for the auto-created owner. Can be any string; the actual Discord username is used after the user first logs in. |
+
+#### Housekeeping
+
+| Setting | Env var | Default | Description |
+|---|---|---|---|
+| `rejected_request_purge_days` | `REJECTED_REQUEST_PURGE_DAYS` | `30` | Automatically delete rejected requests older than this many days. Set to `0` to disable automatic purging. |
+
+#### Backup
+
+| Setting | Env var | Default | Description |
+|---|---|---|---|
+| `backup_allow_admin` | `BACKUP_ALLOW_ADMIN` | `false` | When `true`, admin-role users can download a database backup from the web UI in addition to the owner. The owner can always download a backup regardless of this setting. See [Section 9 — Database Backups](#database-backups) for details. |
+
+#### Developer / Operations
+
+| Setting | Env var | Default | Description |
+|---|---|---|---|
+| `sync_commands` | `SYNC_COMMANDS` | `false` | When `true`, the bot registers all slash commands with Discord on startup. Only needed after adding or changing commands. Set back to `false` after syncing to avoid hitting Discord rate limits. See [Section 7](#7-syncing-bot-commands). |
+| `debug` | `DEBUG` | `false` | Enables verbose logging and FastAPI debug mode. Do not use in production. |
 
 ---
 
@@ -200,28 +250,24 @@ docker compose logs -f web      # web only
 
 ---
 
-## 6. Bootstrapping Your First Admin
+## 6. Bootstrapping Your First Owner
 
-The database starts empty. Before anyone can use moderator or admin features, you need to designate the first administrator.
+The database starts empty. Before anyone can use moderator or admin features, you need to designate the first owner.
 
-First, find your own Discord user ID:
-1. In Discord with Developer Mode enabled, right-click your username → **Copy User ID**
+### Recommended: config-based bootstrap
 
-Then run the bootstrap script:
+Set the following in `config.toml` (or as environment variables) before first startup:
 
-```bash
-docker compose exec bot python scripts/create_admin.py YOUR_DISCORD_ID "YourUsername"
+```toml
+initial_owner_discord_id = "123456789012345678"
+initial_owner_username = "Alice"
 ```
 
-Example:
+Find your Discord user ID: in Discord with Developer Mode enabled, right-click your username → **Copy User ID**.
 
-```bash
-docker compose exec bot python scripts/create_admin.py 123456789012345678 "Alice"
-```
+On startup, if no owner exists yet, BB-Serial automatically creates this user with the Owner role. These settings are safe to leave in place permanently — they are ignored once an owner exists.
 
-This creates (or upgrades) the user with that Discord ID to the `admin` role. You can run this script multiple times to add additional initial admins.
-
-Once you have an admin account, all further role management can be done through the web interface (`/admin/users`) or via bot commands (`/addmod`, `/removemod`).
+After the owner account is created, log in to the web app with that Discord account to activate it, then manage all further roles from `/admin/users` or via bot commands (`/addmod`, `/removemod`).
 
 ---
 
@@ -375,17 +421,30 @@ Only port 8000 (or 443 via the reverse proxy) needs to be internet-accessible. T
 
 The SQLite database lives in the Docker volume `bb-serial_db_data`, mounted at `/data/bb_serial.db` inside the containers.
 
-**Manual backup:**
+#### Web UI download (recommended for ad-hoc backups)
+
+BB-Serial has a built-in hot backup endpoint. Navigate to **Backup** in the navbar (visible to owners, and to admins if `backup_allow_admin = true`). Clicking the link downloads a timestamped `.db` file (`bb_serial_backup_YYYYMMDD_HHMMSS.db`) that is a fully consistent snapshot safe to take while the app is running.
+
+To enable backup downloads for admin-role users, add to `config.toml`:
+
+```toml
+backup_allow_admin = true
+```
+
+#### Manual backup via the host
+
 ```bash
 docker compose exec web sqlite3 /data/bb_serial.db ".backup '/data/backup_$(date +%Y%m%d).db'"
 ```
 
-**Automated daily backup** (add to host crontab):
+#### Automated daily backup (host crontab)
+
 ```bash
 0 3 * * * docker exec bb-serial-web-1 sqlite3 /data/bb_serial.db ".backup '/data/backup_$(date +\%Y\%m\%d).db'" && docker cp bb-serial-web-1:/data/backup_$(date +%Y%m%d).db /your/backup/path/
 ```
 
-**Restoring from backup:**
+#### Restoring from backup
+
 ```bash
 docker compose down
 docker run --rm -v bb-serial_db_data:/data -v /your/backup/path:/backup alpine \
