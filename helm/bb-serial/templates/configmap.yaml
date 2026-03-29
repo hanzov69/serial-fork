@@ -12,7 +12,7 @@ data:
   DISCORD_CLIENT_ID: {{ .Values.discord.clientId | quote }}
 
   # ── Web app (public URL — controls OAuth2 redirect URI) ─────────────
-  WEB_BASE_URL: {{ .Values.web.baseUrl | quote }}
+  WEB_BASE_URL: {{ required "web.baseUrl is required. Set it to your public URL (e.g. https://serials.yourdomain.com). It is used directly as the OAuth2 redirect URI base — do not include a trailing slash or a port unless your public URL genuinely requires one." .Values.web.baseUrl | quote }}
   # ── Server (internal bind — does NOT affect OAuth2 or any public URL) ─
   WEB_HOST: {{ .Values.server.host | quote }}
   WEB_PORT: {{ .Values.server.port | quote }}

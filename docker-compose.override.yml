@@ -14,6 +14,9 @@ services:
   web:
     environment:
       - DEBUG=true
+      # Explicit local-dev base URL — ensures the OAuth2 redirect URI is
+      # http://localhost:8000/auth/callback regardless of .env contents.
+      - WEB_BASE_URL=http://localhost:8000
     volumes:
       - ./shared:/app/shared
       - ./web:/app/web

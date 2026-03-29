@@ -37,7 +37,7 @@ web:
   #     e.g. http://localhost:8000
   # No trailing slash. Must exactly match a redirect URI registered in
   # the Discord Developer Portal → OAuth2 → Redirects (append /auth/callback).
-  baseUrl: "http://localhost:8000"
+  baseUrl: ""  # REQUIRED — set to your public URL, e.g. https://serials.yourdomain.com
 
 # ── Server (internal) ────────────────────────────────────────────────
 # These settings control where uvicorn binds INSIDE the container.
