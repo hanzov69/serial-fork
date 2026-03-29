@@ -29,3 +29,6 @@ build/
 
 # Claude Code memory
 .claude/
+
+# Kubernetes secrets — never commit
+helm/ghcr-pull-secret.yaml

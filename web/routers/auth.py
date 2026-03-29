@@ -5,7 +5,6 @@ Flow: /auth/login → Discord → /auth/callback → session set → redirect ho
 from __future__ import annotations
 
 import logging
-from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -30,12 +29,13 @@ def _settings(request: Request):
 
 
 def _redirect_uri(settings) -> str:
-    """Build the OAuth2 callback URI, ensuring the port is always explicit."""
-    base = settings.web_base_url.rstrip("/")
-    parsed = urlparse(base)
-    if parsed.port is None:
-        base = f"{parsed.scheme}://{parsed.hostname}:{settings.web_port}"
-    return f"{base}/auth/callback"
+    """Build the OAuth2 callback URI from web_base_url.
+
+    web_base_url is the single source of truth for the public URL — include
+    the port there if needed (e.g. http://localhost:8000).  Behind a reverse
+    proxy the URL has no explicit port and none should be added.
+    """
+    return settings.web_base_url.rstrip("/") + "/auth/callback"
 
 
 @router.get("/login")
