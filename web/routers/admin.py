@@ -4,11 +4,13 @@ Moderator and admin routes: review queue, user management, reservations, printer
 from __future__ import annotations
 
 import asyncio
+import io
 import logging
 import os
 import re
 import sqlite3
 import tempfile
+import zipfile
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -568,11 +570,11 @@ async def delete_reservation(
 # Database backup (owner always; admin if backup_allow_admin enabled)
 # ------------------------------------------------------------------
 
-def _hot_backup(db_path: str) -> bytes:
+def _hot_backup_zip(db_path: str, db_filename: str) -> bytes:
     """
-    Use SQLite's built-in online backup API to create a consistent snapshot
-    of the database, safe to run while other connections are active (WAL mode).
-    Returns the raw SQLite file bytes.
+    Use SQLite's built-in online backup API to create a consistent snapshot,
+    then wrap it in a zip archive. Safe to run while other connections are
+    active (WAL mode). Returns zip file bytes.
     """
     tmp_fd, tmp_path = tempfile.mkstemp(suffix=".db")
     os.close(tmp_fd)
@@ -584,22 +586,28 @@ def _hot_backup(db_path: str) -> bytes:
         finally:
             src.close()
             dst.close()
-        with open(tmp_path, "rb") as f:
-            return f.read()
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+            zf.write(tmp_path, arcname=db_filename)
+        return buf.getvalue()
     finally:
         os.unlink(tmp_path)
 
 
-@router.get("/admin/backup")
+@router.get("/backup")
 async def download_backup(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_backup_access),
 ):
-    """Download a hot backup of the SQLite database as a binary file."""
+    """Download a hot backup of the SQLite database as a zip archive."""
     db_path = request.app.state.settings.db_path
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    db_filename = f"bb_serial_backup_{timestamp}.db"
+    zip_filename = f"bb_serial_backup_{timestamp}.zip"
+
     loop = asyncio.get_event_loop()
-    data = await loop.run_in_executor(None, _hot_backup, db_path)
+    data = await loop.run_in_executor(None, _hot_backup_zip, db_path, db_filename)
 
     db.add(AuditLog(
         actor_id=current_user.id,
@@ -607,10 +615,8 @@ async def download_backup(
         details=f"database backup downloaded by {current_user.username}",
     ))
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    filename = f"bb_serial_backup_{timestamp}.db"
     return Response(
         content=data,
-        media_type="application/octet-stream",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{zip_filename}"'},
     )
