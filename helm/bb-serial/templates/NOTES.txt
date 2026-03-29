@@ -44,4 +44,8 @@ IMPORTANT — OAuth2 redirect URI:
 
     {{ .Values.web.baseUrl }}/auth/callback
 
+  web.baseUrl is used directly as the OAuth2 callback base — no port is
+  injected. Ensure the value in your values file exactly matches what is
+  registered in Discord (including or excluding the port as appropriate).
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

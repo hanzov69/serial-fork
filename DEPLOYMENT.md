@@ -10,14 +10,15 @@ This guide covers everything needed to deploy BB-Serial in your environment. It 
 2. [Discord Application Setup](#2-discord-application-setup)
 3. [Getting the Code](#3-getting-the-code)
 4. [Configuration](#4-configuration)
-5. [First Deployment](#5-first-deployment)
-6. [Bootstrapping Your First Admin](#6-bootstrapping-your-first-admin)
-7. [Syncing Bot Commands](#7-syncing-bot-commands)
-8. [Verifying the Installation](#8-verifying-the-installation)
-9. [Ongoing Operations](#9-ongoing-operations)
-10. [Production Hardening](#10-production-hardening)
-11. [Updating the Application](#11-updating-the-application)
-12. [Troubleshooting](#12-troubleshooting)
+5. [First Deployment — Docker Compose](#5-first-deployment--docker-compose)
+6. [First Deployment — Kubernetes (Helm)](#6-first-deployment--kubernetes-helm)
+7. [Bootstrapping Your First Owner](#7-bootstrapping-your-first-owner)
+8. [Syncing Bot Commands](#8-syncing-bot-commands)
+9. [Verifying the Installation](#9-verifying-the-installation)
+10. [Ongoing Operations](#10-ongoing-operations)
+11. [Production Hardening](#11-production-hardening)
+12. [Updating the Application](#12-updating-the-application)
+13. [Troubleshooting](#13-troubleshooting)
 
 ---
 
@@ -174,7 +175,7 @@ Every setting can be placed in `config.toml` (snake_case key) or set as an envir
 | Setting | Env var | Default | Description |
 |---|---|---|---|
 | `web_secret_key` | `WEB_SECRET_KEY` | **Required** | Random secret used to sign session cookies. Generate with `python -c "import secrets; print(secrets.token_hex(32))"` |
-| `web_base_url` | `WEB_BASE_URL` | `http://localhost:8000` | Public base URL of the web app (no trailing slash). Must match the OAuth2 redirect URI registered in Discord. Include port if non-standard (e.g. `http://localhost:8000`). |
+| `web_base_url` | `WEB_BASE_URL` | `http://localhost:8000` | Public base URL of the web app (no trailing slash). This value is used **directly** to construct the OAuth2 redirect URI (`web_base_url + /auth/callback`) — no port is ever appended automatically. Behind a reverse proxy use the public URL without a port (e.g. `https://serials.yoursite.com`). For direct/local access include the port explicitly (e.g. `http://localhost:8000`). Must exactly match a redirect URI registered in Discord. |
 | `web_host` | `WEB_HOST` | `0.0.0.0` | Network interface for the web server to bind to. Use `0.0.0.0` to accept external connections or `127.0.0.1` for localhost-only (e.g. behind a local reverse proxy). |
 | `web_port` | `WEB_PORT` | `8000` | TCP port the web server listens on. |
 
@@ -215,12 +216,12 @@ These settings are used **once** on first startup to create the initial owner ac
 
 | Setting | Env var | Default | Description |
 |---|---|---|---|
-| `sync_commands` | `SYNC_COMMANDS` | `false` | When `true`, the bot registers all slash commands with Discord on startup. Only needed after adding or changing commands. Set back to `false` after syncing to avoid hitting Discord rate limits. See [Section 7](#7-syncing-bot-commands). |
+| `sync_commands` | `SYNC_COMMANDS` | `false` | When `true`, the bot registers all slash commands with Discord on startup. Only needed after adding or changing commands. Set back to `false` after syncing to avoid hitting Discord rate limits. See [Section 8](#8-syncing-bot-commands). |
 | `debug` | `DEBUG` | `false` | Enables verbose logging and FastAPI debug mode. Do not use in production. |
 
 ---
 
-## 5. First Deployment
+## 5. First Deployment — Docker Compose
 
 Build and start both containers:
 
@@ -250,7 +251,138 @@ docker compose logs -f web      # web only
 
 ---
 
-## 6. Bootstrapping Your First Owner
+## 6. First Deployment — Kubernetes (Helm)
+
+Container images are published to GHCR and the chart lives in `helm/bb-serial/`.
+
+### 6a. Prerequisites
+
+- `kubectl` configured against your cluster
+- `helm` 3.x installed
+- Images pushed to GHCR (via GitHub Actions on push to `main` or a version tag)
+
+### 6b. Create the namespace
+
+```bash
+kubectl create namespace bb-serial
+```
+
+### 6c. Image pull secret (private registry)
+
+By default GHCR packages are private. Create a pull secret so Kubernetes can fetch the images.
+
+1. Generate a GitHub Personal Access Token (classic) with the `read:packages` scope at `https://github.com/settings/tokens`
+
+2. Build and apply the secret:
+
+```bash
+kubectl create secret docker-registry ghcr-pull-secret \
+  --docker-server=ghcr.io \
+  --docker-username=YOUR_GITHUB_USERNAME \
+  --docker-password=YOUR_PAT \
+  -n bb-serial
+```
+
+Alternatively, fill in `helm/ghcr-pull-secret.yaml` (see the comments inside) and apply it:
+
+```bash
+kubectl apply -f helm/ghcr-pull-secret.yaml -n bb-serial
+```
+
+Then reference it in your values file:
+
+```yaml
+imagePullSecrets:
+  - name: ghcr-pull-secret
+```
+
+### 6d. Create your values file
+
+```bash
+cp helm/bb-serial/values.example.yaml my-values.yaml
+```
+
+Edit `my-values.yaml`. The minimum required fields are:
+
+```yaml
+discord:
+  guildId: "YOUR_GUILD_ID"
+  requestChannelId: "YOUR_REQUEST_CHANNEL_ID"
+  modNotifyChannelId: "YOUR_MOD_NOTIFY_CHANNEL_ID"
+  clientId: "YOUR_DISCORD_CLIENT_ID"
+
+web:
+  baseUrl: "https://serials.yourdomain.com"   # no trailing slash, no port for reverse proxy
+
+secrets:
+  discordToken: "your-bot-token"
+  discordClientSecret: "your-client-secret"
+  webSecretKey: "generate-with: python -c \"import secrets; print(secrets.token_hex(32))\""
+
+initialOwner:
+  discordId: "YOUR_DISCORD_USER_ID"
+  username: "YourName"
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  host: "serials.yourdomain.com"
+  tls:
+    enabled: true
+    secretName: "bb-serial-tls"
+```
+
+> **Security:** Do not commit `my-values.yaml` if it contains plaintext secrets. Pass secrets via `--set` or use `secrets.existingSecret` to reference a pre-existing Kubernetes Secret (e.g. managed by External Secrets Operator).
+
+### 6e. Register the OAuth2 redirect URI
+
+In the Discord Developer Portal → OAuth2 → Redirects, add:
+
+```
+https://serials.yourdomain.com/auth/callback
+```
+
+This must exactly match `web.baseUrl + /auth/callback`. No port should be included when deploying behind an ingress/reverse proxy.
+
+### 6f. Install the chart
+
+```bash
+helm install bb-serial ./helm/bb-serial \
+  -f my-values.yaml \
+  -n bb-serial
+```
+
+Check that the pod starts:
+
+```bash
+kubectl get pods -n bb-serial
+kubectl logs -l app.kubernetes.io/instance=bb-serial -c web -n bb-serial
+kubectl logs -l app.kubernetes.io/instance=bb-serial -c bot -n bb-serial
+```
+
+### 6g. Sync Discord slash commands (first deploy only)
+
+```bash
+helm upgrade bb-serial ./helm/bb-serial \
+  --set config.syncCommands=true --reuse-values -n bb-serial
+# Wait ~30 seconds for the bot to restart and sync, then flip it back:
+helm upgrade bb-serial ./helm/bb-serial \
+  --set config.syncCommands=false --reuse-values -n bb-serial
+```
+
+### 6h. Upgrading
+
+```bash
+helm upgrade bb-serial ./helm/bb-serial -f my-values.yaml -n bb-serial
+```
+
+Database migrations run automatically on pod startup. The `Recreate` deployment strategy ensures the old pod terminates before the new one starts, preventing concurrent SQLite write access.
+
+---
+
+## 7. Bootstrapping Your First Owner
 
 The database starts empty. Before anyone can use moderator or admin features, you need to designate the first owner.
 
@@ -271,7 +403,7 @@ After the owner account is created, log in to the web app with that Discord acco
 
 ---
 
-## 7. Syncing Bot Commands
+## 8. Syncing Bot Commands
 
 Slash commands must be explicitly registered with Discord before they appear in your server. This only needs to be done **once** (or after you add/change commands).
 
@@ -294,7 +426,7 @@ After syncing, type `/` in your Discord server to confirm the commands appear.
 
 ---
 
-## 8. Verifying the Installation
+## 9. Verifying the Installation
 
 ### Test the bot
 
@@ -313,7 +445,7 @@ After syncing, type `/` in your Discord server to confirm the commands appear.
 
 ---
 
-## 9. Ongoing Operations
+## 10. Ongoing Operations
 
 ### Role Management
 
@@ -329,7 +461,7 @@ Go to `/admin/users`, find the user, change their role to `moderator`, and click
 
 #### Granting admin access
 
-Admin role can only be set via the web interface at `/admin/users` or via the bootstrap script. There is intentionally no `/addadmin` bot command to reduce accident risk.
+Admin role can only be set via the web interface at `/admin/users`. There is intentionally no `/addadmin` bot command to reduce accident risk.
 
 ### Reviewing Serial Requests
 
@@ -386,7 +518,7 @@ Rescinded serials are **not deleted** — the record remains with a `rescinded_a
 
 ---
 
-## 10. Production Hardening
+## 11. Production Hardening
 
 ### TLS / HTTPS
 
@@ -423,7 +555,7 @@ The SQLite database lives in the Docker volume `bb-serial_db_data`, mounted at `
 
 #### Web UI download (recommended for ad-hoc backups)
 
-BB-Serial has a built-in hot backup endpoint. Navigate to **Backup** in the navbar (visible to owners, and to admins if `backup_allow_admin = true`). Clicking the link downloads a timestamped `.db` file (`bb_serial_backup_YYYYMMDD_HHMMSS.db`) that is a fully consistent snapshot safe to take while the app is running.
+BB-Serial has a built-in hot backup endpoint. Navigate to **Backup DB** in the navbar (visible to owners, and to admins if `backup_allow_admin = true`). Clicking the link downloads a timestamped zip archive (`bb_serial_backup_YYYYMMDD_HHMMSS.zip`) containing the SQLite database file. The backup is a fully consistent snapshot taken with SQLite's online backup API — safe to download while the app is running.
 
 To enable backup downloads for admin-role users, add to `config.toml`:
 
@@ -472,7 +604,7 @@ services:
 
 ---
 
-## 11. Updating the Application
+## 12. Updating the Application
 
 ```bash
 # Pull latest code
@@ -486,11 +618,11 @@ If slash commands changed, re-sync them once (see [Section 7](#7-syncing-bot-com
 
 ---
 
-## 12. Troubleshooting
+## 13. Troubleshooting
 
 ### Bot is online but slash commands don't appear
 
-The commands need to be synced. See [Section 7](#7-syncing-bot-commands). Note that Discord can take up to an hour to propagate guild-scoped commands, though it's usually instant.
+The commands need to be synced. See [Section 8](#8-syncing-bot-commands). Note that Discord can take up to an hour to propagate guild-scoped commands, though it's usually instant.
 
 ### "Interaction failed" when clicking Approve/Reject buttons
 

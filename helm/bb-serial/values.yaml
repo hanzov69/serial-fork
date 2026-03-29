@@ -29,8 +29,14 @@ discord:
 
 # ── Web app ──────────────────────────────────────────────────────────
 web:
-  # Public base URL — must match the registered Discord OAuth2 redirect URI.
-  # Example: https://serials.yourdomain.com
+  # Public base URL used for OAuth2 redirect URIs and outbound links.
+  # This value is used directly — no port is injected automatically.
+  # - Behind a reverse proxy: use the public URL with no port
+  #   e.g. https://serials.yourdomain.com
+  # - Local / direct access: include the port explicitly
+  #   e.g. http://localhost:8000
+  # No trailing slash. Must exactly match the redirect URI registered in
+  # the Discord Developer Portal → OAuth2 → Redirects (append /auth/callback).
   baseUrl: "http://localhost:8000"
   port: 8000
 
