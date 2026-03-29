@@ -6,11 +6,13 @@ image:
   bot:
     repository: ghcr.io/hanzov69/bb-serial-bot
     tag: "latest"
-    pullPolicy: IfNotPresent
+    # Always pull when using the latest tag so nodes never run stale images.
+    # Pin to a specific tag (e.g. "0.2.1") and switch to IfNotPresent in production.
+    pullPolicy: Always
   web:
     repository: ghcr.io/hanzov69/bb-serial-web
     tag: "latest"
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
 
 # -- Image pull secrets (for private registries)
 imagePullSecrets: []
