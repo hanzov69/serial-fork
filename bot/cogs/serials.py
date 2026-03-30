@@ -44,46 +44,56 @@ _DISCORD_MSG_RE = re.compile(
 )
 
 
+def _parse_thread_id(post_url: str) -> int | None:
+    """
+    Return the thread/channel ID from a Discord forum-post URL, or None if the
+    URL doesn't look like a thread link.  Accepts discord.com, canary.discord.com,
+    and ptb.discord.com.  A direct-message URL (three numeric segments) is NOT
+    considered a thread link and returns None.
+    """
+    match = _DISCORD_MSG_RE.search(post_url)
+    if not match:
+        return None
+    # Three-segment URL (guild/channel/message) is a direct message link, not a thread.
+    if match.group(2) is not None:
+        return None
+    return int(match.group(1))
+
+
 async def _check_post_media(
     bot: commands.Bot, post_url: str
 ) -> tuple[bool, str | None]:
     """
-    Fetch the linked Discord message and check for image/video content.
+    Fetch the opening message of the linked forum thread and check for
+    image/video content.
 
     Returns (has_media, warning).
     - has_media=True  → at least one image or video found, good to go.
-    - has_media=False, warning=None → post is accessible but has no media.
-    - has_media=False, warning=str → couldn't fetch the post; warning is
+    - has_media=False, warning=None → thread is accessible but has no media.
+    - has_media=False, warning=str → couldn't fetch the thread; warning is
       shown to mods so they can check manually.
     """
-    match = _DISCORD_MSG_RE.search(post_url)
-    if not match:
-        return False, "URL doesn't look like a Discord message link (expected discord.com/channels/…)."
-
-    channel_id = int(match.group(1))
-    message_id = int(match.group(2)) if match.group(2) else None
+    thread_id = _parse_thread_id(post_url)
+    if thread_id is None:
+        return False, None  # caller handles this as a hard rejection
 
     try:
-        channel = bot.get_channel(channel_id) or await bot.fetch_channel(channel_id)
+        channel = bot.get_channel(thread_id) or await bot.fetch_channel(thread_id)
 
-        if message_id is not None:
-            message = await channel.fetch_message(message_id)
-        elif isinstance(channel, discord.Thread):
-            # Forum post link (channel-only URL) — check the opening message.
-            messages = [m async for m in channel.history(limit=1, oldest_first=True)]
-            if not messages:
-                return False, "Could not find the opening post in that thread — manual media check required."
-            message = messages[0]
-        else:
-            # Non-thread channel link — can't determine which message to check.
-            return False, "Link points to a channel rather than a specific post — manual media check required."
+        if not isinstance(channel, discord.Thread):
+            return False, None  # not a thread — hard rejection
+
+        messages = [m async for m in channel.history(limit=1, oldest_first=True)]
+        if not messages:
+            return False, "Could not find the opening post in that thread — manual media check required."
+        message = messages[0]
     except discord.NotFound:
-        return False, "Post not found — the link may be incorrect or the post was deleted."
+        return False, "Thread not found — the link may be incorrect or the post was deleted."
     except discord.Forbidden:
-        return False, "Bot cannot access that channel — manual media check required."
+        return False, "Bot cannot access that thread — manual media check required."
     except discord.HTTPException as exc:
         log.warning("Media check failed for %s: %s", post_url, exc)
-        return False, "Could not reach the post right now — manual media check required."
+        return False, "Could not reach the thread right now — manual media check required."
 
     # Check direct attachments (images / videos)
     for att in message.attachments:
@@ -165,7 +175,7 @@ class SerialsCog(commands.Cog, name="Serials"):
     @app_commands.command(name="request", description="Submit a serial number request for your build")
     @app_commands.describe(
         printer_type="The type of printer you built",
-        post_url="Link to your Discord forum post showing the completed build (must be a discord.com URL)",
+        post_url="Link to your Discord forum thread showing the completed build",
     )
     @app_commands.autocomplete(printer_type=_printer_type_autocomplete)
     async def cmd_request(
@@ -176,17 +186,18 @@ class SerialsCog(commands.Cog, name="Serials"):
     ) -> None:
         await interaction.response.defer(ephemeral=True)
 
-        if "discord.com" not in post_url:
+        if _parse_thread_id(post_url) is None:
             await interaction.followup.send(
-                "The post URL must be a Discord link (must contain `discord.com`).",
+                "The post URL must be a Discord forum thread link "
+                "(e.g. `https://discord.com/channels/…/…`).",
                 ephemeral=True,
             )
             return
 
-        # Check that the linked post actually contains photos or videos.
+        # Check that the linked thread actually contains photos or videos.
         has_media, media_warning = await _check_post_media(self.bot, post_url)
         if media_warning:
-            # Couldn't fetch the post — allow submission but flag it for mods.
+            # Couldn't fetch the thread — allow submission but flag it for mods.
             log.warning("Media check skipped for request (url=%s): %s", post_url, media_warning)
         elif not has_media:
             await interaction.followup.send(
@@ -364,11 +375,12 @@ class SerialsCog(commands.Cog, name="Serials"):
                 )
                 return
 
-            # Update post_url if provided; validate discord.com and check for media
+            # Update post_url if provided; validate thread link and check for media
             if post_url is not None:
-                if "discord.com" not in post_url:
+                if _parse_thread_id(post_url) is None:
                     await interaction.followup.send(
-                        "The post URL must be a Discord link (must contain `discord.com`).",
+                        "The post URL must be a Discord forum thread link "
+                        "(e.g. `https://discord.com/channels/…/…`).",
                         ephemeral=True,
                     )
                     return
@@ -497,6 +509,7 @@ async def _do_approve(
         printer_type = request.printer_type
         requester = request.requester
         mod_message_id = request.discord_message_id
+        post_url = request.post_url
 
     async with get_session() as session:
         result = await session.execute(
@@ -548,6 +561,20 @@ async def _do_approve(
                     log.warning("Role %s or member %s not found for role assignment", printer_type.discord_role_id, requester.discord_id)
         except discord.HTTPException as exc:
             log.warning("Could not assign role %s to %s: %s", printer_type.discord_role_id, requester.discord_id, exc)
+
+    # Post an announcement in the build thread.
+    if post_url:
+        thread_id = _parse_thread_id(post_url)
+        if thread_id is not None:
+            try:
+                thread = bot.get_channel(thread_id) or await bot.fetch_channel(thread_id)
+                if isinstance(thread, discord.Thread):
+                    await thread.send(
+                        f"🎉 Congratulations <@{requester.discord_id}>! "
+                        f"Your build has been approved and issued serial **{display}**."
+                    )
+            except discord.HTTPException as exc:
+                log.warning("Could not post approval announcement in thread %s: %s", thread_id, exc)
 
 
 async def _do_reject(
