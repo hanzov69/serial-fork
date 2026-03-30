@@ -60,15 +60,23 @@ async def _check_post_media(
     if not match:
         return False, "URL doesn't look like a Discord message link (expected discord.com/channels/…)."
 
-    if not match.group(2):
-        # Channel-only link — can't fetch a specific message; let mods verify.
-        return False, "Link points to a channel, not a specific message — manual media check required."
-
-    channel_id, message_id = int(match.group(1)), int(match.group(2))
+    channel_id = int(match.group(1))
+    message_id = int(match.group(2)) if match.group(2) else None
 
     try:
         channel = bot.get_channel(channel_id) or await bot.fetch_channel(channel_id)
-        message = await channel.fetch_message(message_id)
+
+        if message_id is not None:
+            message = await channel.fetch_message(message_id)
+        elif isinstance(channel, discord.Thread):
+            # Forum post link (channel-only URL) — check the opening message.
+            messages = [m async for m in channel.history(limit=1, oldest_first=True)]
+            if not messages:
+                return False, "Could not find the opening post in that thread — manual media check required."
+            message = messages[0]
+        else:
+            # Non-thread channel link — can't determine which message to check.
+            return False, "Link points to a channel rather than a specific post — manual media check required."
     except discord.NotFound:
         return False, "Post not found — the link may be incorrect or the post was deleted."
     except discord.Forbidden:
