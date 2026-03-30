@@ -144,6 +144,14 @@ class SerialsCog(commands.Cog, name="Serials"):
             )
             return
 
+        # Only the thread creator may submit a request for it.
+        if thread.owner_id != interaction.user.id:
+            await interaction.followup.send(
+                "You can only request a serial number from your own forum post.",
+                ephemeral=True,
+            )
+            return
+
         # Identify printer type from the thread's applied tags.
         tag_ids = {str(tag.id) for tag in thread.applied_tags}
         pt: PrinterType | None = None
@@ -308,11 +316,18 @@ class SerialsCog(commands.Cog, name="Serials"):
     ) -> None:
         await interaction.response.defer(ephemeral=True)
 
-        # Must be used inside a forum thread.
+        # Must be used inside a forum thread owned by the requester.
         thread = interaction.channel
         if not isinstance(thread, discord.Thread) or not isinstance(thread.parent, discord.ForumChannel):
             await interaction.followup.send(
                 "Please use `/resubmit` inside your build's forum post thread.",
+                ephemeral=True,
+            )
+            return
+
+        if thread.owner_id != interaction.user.id:
+            await interaction.followup.send(
+                "You can only re-submit a request from your own forum post.",
                 ephemeral=True,
             )
             return
