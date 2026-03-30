@@ -15,7 +15,10 @@
         <span class="nav-brand-text">Serial Fork</span>
       </a>
     </div>
-    <div class="nav-links">
+    <button class="nav-hamburger" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-links" id="navLinks">
       <a href="/">Home</a>
       <a href="/serials">All Serials</a>
       <a href="/info">Info</a>
@@ -33,8 +36,20 @@
       {% if current_user and (current_user.is_owner or (current_user.is_admin and request.app.state.settings.backup_allow_admin)) %}
         <a href="/admin/backup" download>Backup DB</a>
       {% endif %}
+      <div class="nav-user nav-user-mobile">
+        {% if current_user %}
+          <img src="{{ current_user.avatar_url }}" alt="avatar" class="avatar-sm">
+          <span>{{ current_user.username }}</span>
+          {% if current_user.role != 'user' %}
+            <span class="badge badge-{{ current_user.role }}">{{ current_user.role }}</span>
+          {% endif %}
+          <a href="/auth/logout" class="btn btn-sm">Logout</a>
+        {% else %}
+          <a href="/auth/login" class="btn btn-primary btn-sm">Login with Discord</a>
+        {% endif %}
+      </div>
     </div>
-    <div class="nav-user">
+    <div class="nav-user nav-user-desktop">
       {% if current_user %}
         <img src="{{ current_user.avatar_url }}" alt="avatar" class="avatar-sm">
         <span>{{ current_user.username }}</span>
@@ -53,7 +68,11 @@
   </main>
 
   <footer class="footer">
-    <p>Serial Fork Registry</p>
+    <p>
+      <a href="https://github.com/hanzov69/serial-fork" target="_blank" rel="noopener">Serial Fork</a>
+      &nbsp;·&nbsp;
+      <a href="https://forkweld.com/projects/serial-fork" target="_blank" rel="noopener">MrChristian</a>
+    </p>
   </footer>
   <script src="/static/js/main.js"></script>
 </body>
