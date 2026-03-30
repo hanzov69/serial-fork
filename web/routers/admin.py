@@ -527,7 +527,8 @@ async def create_printer_type(
         is_active=True,
         created_by_id=current_user.id,
     ))
-    return RedirectResponse("/admin/config", status_code=303)
+    redirect_url = "/admin/config" if tag_id else "/admin/config?tag_warning=1"
+    return RedirectResponse(redirect_url, status_code=303)
 
 
 @router.post("/printers/{printer_id}/role")

@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from bot.utils.checks import is_admin, is_owner
-from bot.cogs.serials import _printer_type_autocomplete
+from bot.cogs.serials import _channel_id, _printer_type_autocomplete
 from shared.database import get_session, is_serial_number_free, next_serial_number
 from shared.models import (
     AuditLog,
@@ -510,19 +510,42 @@ class AdminCog(commands.Cog, name="Admin"):
                 )
                 return
 
+        # Auto-create a forum tag for this printer type.
+        tag_id: str | None = None
+        forum_channel_id = await _channel_id("discord_forum_channel_id", self.settings.discord_forum_channel_id)
+        forum_channel = self.bot.get_channel(forum_channel_id)
+        if isinstance(forum_channel, discord.ForumChannel):
+            try:
+                new_tag = discord.ForumTag(name=name.strip())
+                updated = await forum_channel.edit(
+                    available_tags=list(forum_channel.available_tags) + [new_tag]
+                )
+                for tag in updated.available_tags:
+                    if tag.name == name.strip():
+                        tag_id = str(tag.id)
+                if tag_id is None:
+                    log.warning("Created forum tag for '%s' but couldn't find its ID in the response", name.strip())
+            except discord.HTTPException as exc:
+                log.warning("Could not create forum tag for '%s': %s", name.strip(), exc)
+        else:
+            log.warning("Forum channel %d not found or not a ForumChannel — skipping tag creation", forum_channel_id)
+
+        async with get_session() as session:
             pt = PrinterType(
                 identifier=identifier,
                 name=name.strip(),
                 description=description,
                 is_active=True,
                 created_by_id=admin.id,
+                discord_tag_id=tag_id,
             )
             session.add(pt)
 
+        tag_note = f" (forum tag ID: `{tag_id}`)" if tag_id else " ⚠️ forum tag could not be created — set it manually in the Config page"
         await interaction.followup.send(
-            f"Printer type **{name}** (`{identifier}`) created successfully.", ephemeral=True
+            f"Printer type **{name}** (`{identifier}`) created successfully.{tag_note}", ephemeral=True
         )
-        log.info("Admin %s created printer type %s (%s)", interaction.user, name, identifier)
+        log.info("Admin %s created printer type %s (%s) tag_id=%s", interaction.user, name, identifier, tag_id)
 
     @app_commands.command(name="printers", description="List all printer types")
     async def cmd_printers(self, interaction: discord.Interaction) -> None:

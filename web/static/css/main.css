@@ -463,6 +463,19 @@ a:hover { text-decoration: underline; }
 }
 .input-sm:focus { outline: none; border-color: var(--accent); }
 
+/* ── Alerts ────────────────────────────────────────────── */
+.alert {
+  padding: 0.85rem 1.1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+.alert-warning {
+  background: rgba(224, 120, 48, 0.1);
+  border-color: var(--warning);
+  color: var(--text);
+}
+
 /* ── Empty states ──────────────────────────────────────── */
 .empty-state       { color: var(--text-muted); padding: 2rem 0; }
 .empty-state-large { text-align: center; padding: 4rem 0; color: var(--text-muted); font-size: 1.05rem; }
