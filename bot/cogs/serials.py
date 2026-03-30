@@ -43,6 +43,18 @@ async def _channel_id(key: str, fallback: int) -> int:
     return int(val) if val else fallback
 
 
+def _parse_thread_id(post_url: str) -> int | None:
+    """
+    Extract the thread/channel snowflake from a Discord jump URL.
+
+    Format: https://discord.com/channels/{guild_id}/{channel_id}[/{message_id}]
+    Returns the channel_id integer, or None if the URL doesn't match.
+    """
+    import re
+    m = re.search(r"discord\.com/channels/\d+/(\d+)", post_url)
+    return int(m.group(1)) if m else None
+
+
 async def _check_thread_media(thread: discord.Thread) -> tuple[bool, str | None]:
     """
     Check the opening message of a forum thread for image/video content.

@@ -83,6 +83,30 @@ async def assign_role(
         log.warning("Could not assign role %s to user %s: %s", role_id, discord_user_id, exc)
 
 
+def _parse_thread_id(post_url: str) -> int | None:
+    """Extract the thread/channel snowflake from a Discord jump URL."""
+    import re
+    m = re.search(r"discord\.com/channels/\d+/(\d+)", post_url)
+    return int(m.group(1)) if m else None
+
+
+async def post_thread_message(settings: Settings, post_url: str, content: str) -> None:
+    """Post a plain-text message into the Discord forum thread identified by post_url."""
+    thread_id = _parse_thread_id(post_url)
+    if thread_id is None:
+        log.warning("Could not parse thread ID from post_url: %s", post_url)
+        return
+    url = f"{_DISCORD_API}/channels/{thread_id}/messages"
+    headers = {"Authorization": f"Bot {settings.discord_token}"}
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(url, json={"content": content}, headers=headers)
+            if resp.status_code not in (200, 201):
+                log.warning("Could not post to thread %s: %s %s", thread_id, resp.status_code, resp.text)
+    except Exception as exc:
+        log.warning("Could not post to thread %s: %s", thread_id, exc)
+
+
 async def _patch_message(settings: Settings, message_id: str, payload: dict) -> None:
     """PATCH a Discord channel message. Silently logs on failure."""
     url = f"{_DISCORD_API}/channels/{settings.discord_mod_notify_channel_id}/messages/{message_id}"

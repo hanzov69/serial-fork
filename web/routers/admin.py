@@ -31,7 +31,7 @@ from shared.models import (
     UserRole,
 )
 from web.deps import get_db, require_admin, require_backup_access, require_moderator, require_owner
-from web.discord_notify import assign_role, create_forum_tag, notify_approved, notify_rejected
+from web.discord_notify import assign_role, create_forum_tag, notify_approved, notify_rejected, post_thread_message
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -153,6 +153,13 @@ async def approve_request(
     )
     if serial_request.printer_type.discord_role_id:
         await assign_role(settings, serial_request.requester.discord_id, serial_request.printer_type.discord_role_id)
+    if serial_request.post_url:
+        await post_thread_message(
+            settings,
+            serial_request.post_url,
+            f"🎉 Congratulations <@{serial_request.requester.discord_id}>! "
+            f"Your build has been approved and issued serial **{serial_display}**.",
+        )
 
     return RedirectResponse("/admin/queue", status_code=303)
 
@@ -228,6 +235,13 @@ async def assign_serial(
     )
     if serial_request.printer_type.discord_role_id:
         await assign_role(settings, serial_request.requester.discord_id, serial_request.printer_type.discord_role_id)
+    if serial_request.post_url:
+        await post_thread_message(
+            settings,
+            serial_request.post_url,
+            f"🎉 Congratulations <@{serial_request.requester.discord_id}>! "
+            f"Your build has been approved and issued serial **{serial_display}**.",
+        )
 
     return RedirectResponse("/admin/queue", status_code=303)
 
