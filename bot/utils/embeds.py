@@ -38,7 +38,11 @@ def request_received(request: SerialRequest, printer_type: PrinterType, settings
 
 
 def request_pending_review(
-    request: SerialRequest, printer_type: PrinterType, requester: User, settings: Settings
+    request: SerialRequest,
+    printer_type: PrinterType,
+    requester: User,
+    settings: Settings,
+    media_warning: str | None = None,
 ) -> discord.Embed:
     embed = discord.Embed(
         title="New Serial Request",
@@ -50,6 +54,12 @@ def request_pending_review(
     embed.add_field(name="Submitted By", value=f"<@{requester.discord_id}>", inline=True)
     if request.post_url:
         embed.add_field(name="Forum Post", value=request.post_url, inline=False)
+    if media_warning:
+        embed.add_field(
+            name="⚠️ Media Check Failed",
+            value=f"{media_warning}\nPlease verify the post contains build photos/videos before approving.",
+            inline=False,
+        )
     embed.set_footer(text=f"Use /approve {request.id} or /reject {request.id}")
     return embed
 

@@ -4,6 +4,7 @@ Core serial number commands: /request, /approve, /reject, /lookup, /queue
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime, timezone
 
 import discord
@@ -34,6 +35,56 @@ from shared.models import (
 )
 
 log = logging.getLogger(__name__)
+
+# Matches https://discord.com/channels/{guild}/{channel}/{message}
+_DISCORD_MSG_RE = re.compile(
+    r"https?://(?:www\.)?discord\.com/channels/\d+/(\d+)/(\d+)"
+)
+
+
+async def _check_post_media(
+    bot: commands.Bot, post_url: str
+) -> tuple[bool, str | None]:
+    """
+    Fetch the linked Discord message and check for image/video content.
+
+    Returns (has_media, warning).
+    - has_media=True  → at least one image or video found, good to go.
+    - has_media=False, warning=None → post is accessible but has no media.
+    - has_media=False, warning=str → couldn't fetch the post; warning is
+      shown to mods so they can check manually.
+    """
+    match = _DISCORD_MSG_RE.search(post_url)
+    if not match:
+        return False, "URL doesn't look like a direct Discord message link (expected discord.com/channels/…)."
+
+    channel_id, message_id = int(match.group(1)), int(match.group(2))
+
+    try:
+        channel = bot.get_channel(channel_id) or await bot.fetch_channel(channel_id)
+        message = await channel.fetch_message(message_id)
+    except discord.NotFound:
+        return False, "Post not found — the link may be incorrect or the post was deleted."
+    except discord.Forbidden:
+        return False, "Bot cannot access that channel — manual media check required."
+    except discord.HTTPException as exc:
+        log.warning("Media check failed for %s: %s", post_url, exc)
+        return False, "Could not reach the post right now — manual media check required."
+
+    # Check direct attachments (images / videos)
+    for att in message.attachments:
+        ct = att.content_type or ""
+        if ct.startswith("image/") or ct.startswith("video/"):
+            return True, None
+
+    # Check embeds (linked images, GIFs, videos)
+    for embed in message.embeds:
+        if embed.type in ("image", "video", "gifv"):
+            return True, None
+        if embed.image or embed.video:
+            return True, None
+
+    return False, None
 
 
 # ------------------------------------------------------------------
@@ -118,6 +169,19 @@ class SerialsCog(commands.Cog, name="Serials"):
             )
             return
 
+        # Check that the linked post actually contains photos or videos.
+        has_media, media_warning = await _check_post_media(self.bot, post_url)
+        if media_warning:
+            # Couldn't fetch the post — allow submission but flag it for mods.
+            log.warning("Media check skipped for request (url=%s): %s", post_url, media_warning)
+        elif not has_media:
+            await interaction.followup.send(
+                "Your forum post doesn't appear to contain any photos or videos of your build.\n"
+                "Please add build photos or a video to your post and then re-submit.",
+                ephemeral=True,
+            )
+            return
+
         user = await _get_or_create_user(interaction.user)
 
         # Resolve the printer type by identifier
@@ -153,7 +217,7 @@ class SerialsCog(commands.Cog, name="Serials"):
 
         mod_channel = self.bot.get_channel(self.settings.discord_mod_notify_channel_id)
         if mod_channel:
-            embed_mod = request_pending_review(request, pt, user, self.settings)
+            embed_mod = request_pending_review(request, pt, user, self.settings, media_warning=media_warning)
             view = _ReviewView(request_id=request_id, bot=self.bot)
             mod_msg = await mod_channel.send(embed=embed_mod, view=view)
             async with get_session() as session:
@@ -286,7 +350,7 @@ class SerialsCog(commands.Cog, name="Serials"):
                 )
                 return
 
-            # Update post_url if provided; validate discord.com
+            # Update post_url if provided; validate discord.com and check for media
             if post_url is not None:
                 if "discord.com" not in post_url:
                     await interaction.followup.send(
@@ -294,7 +358,19 @@ class SerialsCog(commands.Cog, name="Serials"):
                         ephemeral=True,
                     )
                     return
+                has_media, media_warning = await _check_post_media(self.bot, post_url)
+                if media_warning:
+                    log.warning("Media check skipped for resubmit (url=%s): %s", post_url, media_warning)
+                elif not has_media:
+                    await interaction.followup.send(
+                        "Your forum post doesn't appear to contain any photos or videos of your build.\n"
+                        "Please add build photos or a video to your post and then re-submit.",
+                        ephemeral=True,
+                    )
+                    return
                 request.post_url = post_url
+            else:
+                media_warning = None
 
             # Reset to pending
             request.status = RequestStatus.pending
@@ -317,7 +393,7 @@ class SerialsCog(commands.Cog, name="Serials"):
 
         mod_channel = self.bot.get_channel(self.settings.discord_mod_notify_channel_id)
         if mod_channel:
-            embed_mod = request_pending_review(request, pt, user, self.settings)
+            embed_mod = request_pending_review(request, pt, user, self.settings, media_warning=media_warning)
             view = _ReviewView(request_id=request_id_val, bot=self.bot)
             mod_msg = await mod_channel.send(embed=embed_mod, view=view)
             async with get_session() as session:
@@ -443,6 +519,21 @@ async def _do_approve(
                 await mod_msg.edit(embed=resolved_embed, view=None)
             except discord.HTTPException:
                 log.warning("Could not update mod channel message for request %d", request_id)
+
+    if printer_type.discord_role_id:
+        try:
+            guild = bot.get_guild(settings.discord_guild_id)
+            if guild:
+                member = guild.get_member(int(requester.discord_id))
+                if member is None:
+                    member = await guild.fetch_member(int(requester.discord_id))
+                role = guild.get_role(int(printer_type.discord_role_id))
+                if role and member:
+                    await member.add_roles(role, reason=f"Serial {display} approved (request #{request_id})")
+                else:
+                    log.warning("Role %s or member %s not found for role assignment", printer_type.discord_role_id, requester.discord_id)
+        except discord.HTTPException as exc:
+            log.warning("Could not assign role %s to %s: %s", printer_type.discord_role_id, requester.discord_id, exc)
 
 
 async def _do_reject(

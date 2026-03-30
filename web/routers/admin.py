@@ -31,7 +31,7 @@ from shared.models import (
     UserRole,
 )
 from web.deps import get_db, require_admin, require_backup_access, require_moderator, require_owner
-from web.discord_notify import notify_approved, notify_rejected
+from web.discord_notify import assign_role, notify_approved, notify_rejected
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -151,6 +151,8 @@ async def approve_request(
         serial_request.requester.discord_id,
         current_user.username,
     )
+    if serial_request.printer_type.discord_role_id:
+        await assign_role(settings, serial_request.requester.discord_id, serial_request.printer_type.discord_role_id)
 
     return RedirectResponse("/admin/queue", status_code=303)
 
@@ -224,6 +226,8 @@ async def assign_serial(
         serial_request.requester.discord_id,
         current_user.username,
     )
+    if serial_request.printer_type.discord_role_id:
+        await assign_role(settings, serial_request.requester.discord_id, serial_request.printer_type.discord_role_id)
 
     return RedirectResponse("/admin/queue", status_code=303)
 
@@ -434,11 +438,15 @@ async def printers_list(
     )
 
 
+_ROLE_ID_RE = re.compile(r"^\d{17,20}$")
+
+
 @router.post("/printers")
 async def create_printer_type(
     identifier: str = Form(...),
     name: str = Form(...),
     description: str = Form(default=""),
+    discord_role_id: str = Form(default=""),
     request: Request = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_admin),
@@ -456,13 +464,39 @@ async def create_printer_type(
     if existing_name:
         raise HTTPException(status_code=409, detail=f"Name '{name}' is already in use")
 
+    clean_role_id = discord_role_id.strip() or None
+    if clean_role_id and not _ROLE_ID_RE.match(clean_role_id):
+        raise HTTPException(status_code=400, detail="Discord Role ID must be a numeric snowflake (17–20 digits)")
+
     db.add(PrinterType(
         identifier=identifier,
         name=name.strip(),
         description=description.strip() or None,
+        discord_role_id=clean_role_id,
         is_active=True,
         created_by_id=current_user.id,
     ))
+    return RedirectResponse("/admin/printers", status_code=303)
+
+
+@router.post("/printers/{printer_id}/role")
+async def set_printer_role(
+    printer_id: int,
+    discord_role_id: str = Form(default=""),
+    request: Request = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    result = await db.execute(select(PrinterType).where(PrinterType.id == printer_id))
+    pt = result.scalar_one_or_none()
+    if pt is None:
+        raise HTTPException(status_code=404, detail="Printer type not found")
+
+    clean_role_id = discord_role_id.strip() or None
+    if clean_role_id and not _ROLE_ID_RE.match(clean_role_id):
+        raise HTTPException(status_code=400, detail="Discord Role ID must be a numeric snowflake (17–20 digits)")
+
+    pt.discord_role_id = clean_role_id
     return RedirectResponse("/admin/printers", status_code=303)
 
 

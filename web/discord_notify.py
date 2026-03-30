@@ -25,6 +25,26 @@ _GREEN = 0x57F287
 _RED = 0xED4245
 
 
+async def assign_role(
+    settings: Settings,
+    discord_user_id: str,
+    role_id: str,
+) -> None:
+    """Assign a Discord guild role to a user via the bot token. Logs on failure."""
+    url = f"{_DISCORD_API}/guilds/{settings.discord_guild_id}/members/{discord_user_id}/roles/{role_id}"
+    headers = {"Authorization": f"Bot {settings.discord_token}"}
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.put(url, headers=headers)
+            if resp.status_code not in (200, 204):
+                log.warning(
+                    "Could not assign role %s to user %s: %s %s",
+                    role_id, discord_user_id, resp.status_code, resp.text,
+                )
+    except Exception as exc:
+        log.warning("Could not assign role %s to user %s: %s", role_id, discord_user_id, exc)
+
+
 async def _patch_message(settings: Settings, message_id: str, payload: dict) -> None:
     """PATCH a Discord channel message. Silently logs on failure."""
     url = f"{_DISCORD_API}/channels/{settings.discord_mod_notify_channel_id}/messages/{message_id}"

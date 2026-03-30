@@ -2,6 +2,8 @@
 .env
 config.toml
 spec.md
+dump.yaml
+
 
 # Python
 __pycache__/

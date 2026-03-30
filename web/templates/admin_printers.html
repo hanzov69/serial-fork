@@ -22,6 +22,7 @@
           <th>Identifier</th>
           <th>Name</th>
           <th>Description</th>
+          <th>Discord Role</th>
           <th>Status</th>
           <th></th>
         </tr>
@@ -32,6 +33,17 @@
           <td><span class="mono badge">{{ pt.identifier }}</span></td>
           <td>{{ pt.name }}</td>
           <td class="muted" style="font-size:0.85rem">{{ pt.description or '—' }}</td>
+          <td>
+            <form method="post" action="/admin/printers/{{ pt.id }}/role"
+                  style="display:flex; gap:0.4rem; align-items:center">
+              <input type="text" name="discord_role_id"
+                     value="{{ pt.discord_role_id or '' }}"
+                     placeholder="Role ID"
+                     pattern="\d{17,20}" title="Numeric snowflake ID (17–20 digits)"
+                     style="width:9rem; font-size:0.8rem; padding:0.2rem 0.4rem">
+              <button type="submit" class="btn btn-sm">Save</button>
+            </form>
+          </td>
           <td>
             {% if pt.is_active %}
               <span class="badge badge-active">Active</span>
@@ -49,7 +61,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="5" class="empty-state">No printer types defined.</td></tr>
+        <tr><td colspan="6" class="empty-state">No printer types defined.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -82,6 +94,18 @@
           </label>
           <input type="text" name="description" maxlength="300"
                  class="input-full" placeholder="Short description">
+        </div>
+        <div>
+          <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:0.25rem">
+            Discord Role ID <span class="muted">(optional)</span>
+          </label>
+          <input type="text" name="discord_role_id"
+                 class="input-full" placeholder="e.g. 123456789012345678"
+                 pattern="\d{17,20}" title="Numeric snowflake ID (17–20 digits)">
+          <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem">
+            Assigned to the requester when their serial is approved.
+            Right-click a role in Discord (Developer Mode on) to copy its ID.
+          </p>
         </div>
         <button type="submit" class="btn btn-primary">Create</button>
       </form>

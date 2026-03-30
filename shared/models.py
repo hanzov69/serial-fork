@@ -98,6 +98,9 @@ class PrinterType(Base):
     # 1–3 uppercase characters used as the serial prefix (e.g. "BB", "BBP", "CC")
     identifier: Mapped[str] = mapped_column(String(3), unique=True, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Discord role ID to assign when a serial of this type is approved.
+    # Stored as a string to avoid integer overflow on large snowflake IDs.
+    discord_role_id: Mapped[str | None] = mapped_column(String(20), nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="1"
     )
