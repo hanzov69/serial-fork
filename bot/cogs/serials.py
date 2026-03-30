@@ -584,6 +584,12 @@ async def _do_approve(
                     await member.add_roles(role, reason=f"Serial {display} approved (request #{request_id})")
                 else:
                     log.warning("Role %s or member %s not found for role assignment", printer_type.discord_role_id, requester.discord_id)
+        except discord.Forbidden as exc:
+            log.warning(
+                "Could not assign role %s to %s: %s — "
+                "check that the bot has Manage Roles permission and that its role is above '%s' in the server hierarchy",
+                printer_type.discord_role_id, requester.discord_id, exc, printer_type.name,
+            )
         except discord.HTTPException as exc:
             log.warning("Could not assign role %s to %s: %s", printer_type.discord_role_id, requester.discord_id, exc)
 
