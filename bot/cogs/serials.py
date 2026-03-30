@@ -4,7 +4,6 @@ Core serial number commands: /request, /approve, /reject, /lookup, /queue
 from __future__ import annotations
 
 import logging
-import re
 from datetime import datetime, timezone
 
 import discord
@@ -36,72 +35,32 @@ from shared.models import (
 
 log = logging.getLogger(__name__)
 
-# Matches discord.com / canary.discord.com / ptb.discord.com message links.
-# Group 1 = channel_id, group 2 = message_id (message_id may be absent for
-# channel-only links — callers must handle the None case).
-_DISCORD_MSG_RE = re.compile(
-    r"https?://(?:[\w-]+\.)?discord\.com/channels/\d+/(\d+)(?:/(\d+))?"
-)
 
-
-def _parse_thread_id(post_url: str) -> int | None:
+async def _check_thread_media(thread: discord.Thread) -> tuple[bool, str | None]:
     """
-    Return the thread/channel ID from a Discord forum-post URL, or None if the
-    URL doesn't look like a thread link.  Accepts discord.com, canary.discord.com,
-    and ptb.discord.com.  A direct-message URL (three numeric segments) is NOT
-    considered a thread link and returns None.
-    """
-    match = _DISCORD_MSG_RE.search(post_url)
-    if not match:
-        return None
-    # Three-segment URL (guild/channel/message) is a direct message link, not a thread.
-    if match.group(2) is not None:
-        return None
-    return int(match.group(1))
-
-
-async def _check_post_media(
-    bot: commands.Bot, post_url: str
-) -> tuple[bool, str | None]:
-    """
-    Fetch the opening message of the linked forum thread and check for
-    image/video content.
+    Check the opening message of a forum thread for image/video content.
 
     Returns (has_media, warning).
-    - has_media=True  → at least one image or video found, good to go.
-    - has_media=False, warning=None → thread is accessible but has no media.
-    - has_media=False, warning=str → couldn't fetch the thread; warning is
-      shown to mods so they can check manually.
+    - has_media=True  → at least one image or video found.
+    - has_media=False, warning=None → thread accessible but no media found.
+    - has_media=False, warning=str → couldn't read the thread; mods should verify.
     """
-    thread_id = _parse_thread_id(post_url)
-    if thread_id is None:
-        return False, None  # caller handles this as a hard rejection
-
     try:
-        channel = bot.get_channel(thread_id) or await bot.fetch_channel(thread_id)
-
-        if not isinstance(channel, discord.Thread):
-            return False, None  # not a thread — hard rejection
-
-        messages = [m async for m in channel.history(limit=1, oldest_first=True)]
-        if not messages:
-            return False, "Could not find the opening post in that thread — manual media check required."
-        message = messages[0]
-    except discord.NotFound:
-        return False, "Thread not found — the link may be incorrect or the post was deleted."
+        messages = [m async for m in thread.history(limit=1, oldest_first=True)]
     except discord.Forbidden:
-        return False, "Bot cannot access that thread — manual media check required."
+        return False, "Bot cannot read that thread — manual media check required."
     except discord.HTTPException as exc:
-        log.warning("Media check failed for %s: %s", post_url, exc)
-        return False, "Could not reach the thread right now — manual media check required."
+        log.warning("Media check failed for thread %s: %s", thread.id, exc)
+        return False, "Could not read the thread right now — manual media check required."
 
-    # Check direct attachments (images / videos)
+    if not messages:
+        return False, "Could not find the opening post in that thread — manual media check required."
+
+    message = messages[0]
     for att in message.attachments:
         ct = att.content_type or ""
         if ct.startswith("image/") or ct.startswith("video/"):
             return True, None
-
-    # Check embeds (linked images, GIFs, videos)
     for embed in message.embeds:
         if embed.type in ("image", "video", "gifv"):
             return True, None
@@ -173,59 +132,67 @@ class SerialsCog(commands.Cog, name="Serials"):
     # ------------------------------------------------------------------
 
     @app_commands.command(name="request", description="Submit a serial number request for your build")
-    @app_commands.describe(
-        printer_type="The type of printer you built",
-        post_url="Link to your Discord forum thread showing the completed build",
-    )
-    @app_commands.autocomplete(printer_type=_printer_type_autocomplete)
-    async def cmd_request(
-        self,
-        interaction: discord.Interaction,
-        printer_type: str,
-        post_url: str,
-    ) -> None:
+    async def cmd_request(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True)
 
-        if _parse_thread_id(post_url) is None:
+        # Must be used inside a forum thread.
+        thread = interaction.channel
+        if not isinstance(thread, discord.Thread) or not isinstance(thread.parent, discord.ForumChannel):
             await interaction.followup.send(
-                "The post URL must be a Discord forum thread link "
-                "(e.g. `https://discord.com/channels/…/…`).",
+                "Please use `/request` inside your build's forum post thread.",
                 ephemeral=True,
             )
             return
 
-        # Check that the linked thread actually contains photos or videos.
-        has_media, media_warning = await _check_post_media(self.bot, post_url)
+        # Identify printer type from the thread's applied tags.
+        tag_ids = {str(tag.id) for tag in thread.applied_tags}
+        pt: PrinterType | None = None
+        async with get_session() as session:
+            pt_result = await session.execute(
+                select(PrinterType).where(PrinterType.is_active == True)
+            )
+            for candidate in pt_result.scalars():
+                if candidate.discord_tag_id and candidate.discord_tag_id in tag_ids:
+                    pt = candidate
+                    break
+
+        if pt is None:
+            await interaction.followup.send(
+                "Could not determine the printer type from this thread's tags.\n"
+                "Please make sure your post has the correct printer type tag applied.",
+                ephemeral=True,
+            )
+            return
+
+        # Check that the thread contains photos or videos.
+        has_media, media_warning = await _check_thread_media(thread)
         if media_warning:
-            # Couldn't fetch the thread — allow submission but flag it for mods.
-            log.warning("Media check skipped for request (url=%s): %s", post_url, media_warning)
+            log.warning("Media check warning for thread %s: %s", thread.id, media_warning)
         elif not has_media:
             await interaction.followup.send(
                 "Your forum post doesn't appear to contain any photos or videos of your build.\n"
-                "Please add build photos or a video to your post and then re-submit.",
+                "Please add build photos or a video to your post and then try again.",
                 ephemeral=True,
             )
             return
 
         user = await _get_or_create_user(interaction.user)
-
-        # Resolve the printer type by identifier
-        async with get_session() as session:
-            pt_result = await session.execute(
-                select(PrinterType)
-                .where(PrinterType.identifier == printer_type.upper())
-                .where(PrinterType.is_active == True)
-            )
-            pt = pt_result.scalar_one_or_none()
-
-        if pt is None:
-            await interaction.followup.send(
-                f"Unknown printer type `{printer_type}`. Use the autocomplete to pick a valid type.",
-                ephemeral=True,
-            )
-            return
+        post_url = thread.jump_url
 
         async with get_session() as session:
+            # Prevent duplicate pending requests for the same thread.
+            existing = await session.scalar(
+                select(SerialRequest)
+                .where(SerialRequest.post_url == post_url)
+                .where(SerialRequest.status == RequestStatus.pending)
+            )
+            if existing:
+                await interaction.followup.send(
+                    f"There is already a pending request (`#{existing.id}`) for this thread.",
+                    ephemeral=True,
+                )
+                return
+
             request = SerialRequest(
                 requester_id=user.id,
                 printer_type_id=pt.id,
@@ -332,18 +299,23 @@ class SerialsCog(commands.Cog, name="Serials"):
     # /resubmit
     # ------------------------------------------------------------------
 
-    @app_commands.command(name="resubmit", description="Update and re-submit a rejected serial request")
-    @app_commands.describe(
-        request_id="The ID of your rejected request to re-submit",
-        post_url="Updated Discord forum post URL (must contain discord.com, leave blank to keep existing)",
-    )
+    @app_commands.command(name="resubmit", description="Re-submit a rejected serial request from its forum thread")
+    @app_commands.describe(request_id="The ID of your rejected request to re-submit")
     async def cmd_resubmit(
         self,
         interaction: discord.Interaction,
         request_id: int,
-        post_url: str | None = None,
     ) -> None:
         await interaction.response.defer(ephemeral=True)
+
+        # Must be used inside a forum thread.
+        thread = interaction.channel
+        if not isinstance(thread, discord.Thread) or not isinstance(thread.parent, discord.ForumChannel):
+            await interaction.followup.send(
+                "Please use `/resubmit` inside your build's forum post thread.",
+                ephemeral=True,
+            )
+            return
 
         user = await _get_or_create_user(interaction.user)
 
@@ -375,28 +347,21 @@ class SerialsCog(commands.Cog, name="Serials"):
                 )
                 return
 
-            # Update post_url if provided; validate thread link and check for media
-            if post_url is not None:
-                if _parse_thread_id(post_url) is None:
-                    await interaction.followup.send(
-                        "The post URL must be a Discord forum thread link "
-                        "(e.g. `https://discord.com/channels/…/…`).",
-                        ephemeral=True,
-                    )
-                    return
-                has_media, media_warning = await _check_post_media(self.bot, post_url)
-                if media_warning:
-                    log.warning("Media check skipped for resubmit (url=%s): %s", post_url, media_warning)
-                elif not has_media:
-                    await interaction.followup.send(
-                        "Your forum post doesn't appear to contain any photos or videos of your build.\n"
-                        "Please add build photos or a video to your post and then re-submit.",
-                        ephemeral=True,
-                    )
-                    return
-                request.post_url = post_url
-            else:
-                media_warning = None
+            # Update post_url to the current thread (may differ from original if user
+            # re-submits from a new thread with better photos).
+            request.post_url = thread.jump_url
+
+            # Re-check media on the current thread.
+            has_media, media_warning = await _check_thread_media(thread)
+            if media_warning:
+                log.warning("Media check warning for resubmit thread %s: %s", thread.id, media_warning)
+            elif not has_media:
+                await interaction.followup.send(
+                    "Your forum post doesn't appear to contain any photos or videos of your build.\n"
+                    "Please add build photos or a video to your post and then re-submit.",
+                    ephemeral=True,
+                )
+                return
 
             # Reset to pending
             request.status = RequestStatus.pending

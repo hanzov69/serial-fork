@@ -22,8 +22,8 @@ imagePullSecrets: []
 discord:
   # The Guild (server) ID where the bot operates
   guildId: ""
-  # Channel where users post /request commands
-  requestChannelId: ""
+  # Forum channel where users create build posts and use /request
+  forumChannelId: ""
   # Channel where mods receive approval notifications
   modNotifyChannelId: ""
   # Discord application client ID (OAuth2)

@@ -43,8 +43,8 @@ class Settings(BaseSettings):
     # --- Discord bot ---
     discord_token: str = Field(..., description="Discord bot token")
     discord_guild_id: int = Field(..., description="Guild (server) ID where bot operates")
-    discord_request_channel_id: int = Field(
-        ..., description="Channel where users post serial requests"
+    discord_forum_channel_id: int = Field(
+        ..., description="Forum channel where users create build posts and use /request"
     )
     discord_mod_notify_channel_id: int = Field(
         ..., description="Channel where moderators receive approval notifications"

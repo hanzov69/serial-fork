@@ -25,6 +25,44 @@ _GREEN = 0x57F287
 _RED = 0xED4245
 
 
+async def create_forum_tag(
+    settings: Settings,
+    tag_name: str,
+) -> str | None:
+    """
+    Add a new available tag to the forum channel and return its snowflake ID.
+    Fetches the current tag list, appends the new tag, PATCHes the channel,
+    then returns the ID Discord assigned to it.  Returns None on failure.
+    """
+    channel_url = f"{_DISCORD_API}/channels/{settings.discord_forum_channel_id}"
+    headers = {"Authorization": f"Bot {settings.discord_token}"}
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            # Fetch existing tags so we don't clobber them.
+            get_resp = await client.get(channel_url, headers=headers)
+            get_resp.raise_for_status()
+            existing_tags = get_resp.json().get("available_tags", [])
+
+            new_tags = existing_tags + [{"name": tag_name, "moderated": False}]
+            patch_resp = await client.patch(
+                channel_url,
+                json={"available_tags": new_tags},
+                headers=headers,
+            )
+            patch_resp.raise_for_status()
+
+            updated_tags = patch_resp.json().get("available_tags", [])
+            # Find the tag we just added by name (last match wins if duplicate names).
+            tag_id = None
+            for tag in updated_tags:
+                if tag.get("name") == tag_name:
+                    tag_id = str(tag["id"])
+            return tag_id
+    except Exception as exc:
+        log.warning("Could not create forum tag '%s': %s", tag_name, exc)
+        return None
+
+
 async def assign_role(
     settings: Settings,
     discord_user_id: str,

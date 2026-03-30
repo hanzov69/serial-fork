@@ -101,6 +101,8 @@ class PrinterType(Base):
     # Discord role ID to assign when a serial of this type is approved.
     # Stored as a string to avoid integer overflow on large snowflake IDs.
     discord_role_id: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Discord forum tag ID used to identify this printer type from a thread's applied tags.
+    discord_tag_id: Mapped[str | None] = mapped_column(String(20), nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="1"
     )

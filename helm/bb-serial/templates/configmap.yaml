@@ -7,7 +7,7 @@ metadata:
 data:
   # ── Discord (non-secret) ────────────────────────────────────────────
   DISCORD_GUILD_ID: {{ .Values.discord.guildId | quote }}
-  DISCORD_REQUEST_CHANNEL_ID: {{ .Values.discord.requestChannelId | quote }}
+  DISCORD_FORUM_CHANNEL_ID: {{ .Values.discord.forumChannelId | quote }}
   DISCORD_MOD_NOTIFY_CHANNEL_ID: {{ .Values.discord.modNotifyChannelId | quote }}
   DISCORD_CLIENT_ID: {{ .Values.discord.clientId | quote }}
 
