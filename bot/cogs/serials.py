@@ -36,9 +36,11 @@ from shared.models import (
 
 log = logging.getLogger(__name__)
 
-# Matches https://discord.com/channels/{guild}/{channel}/{message}
+# Matches discord.com / canary.discord.com / ptb.discord.com message links.
+# Group 1 = channel_id, group 2 = message_id (message_id may be absent for
+# channel-only links — callers must handle the None case).
 _DISCORD_MSG_RE = re.compile(
-    r"https?://(?:www\.)?discord\.com/channels/\d+/(\d+)/(\d+)"
+    r"https?://(?:[\w-]+\.)?discord\.com/channels/\d+/(\d+)(?:/(\d+))?"
 )
 
 
@@ -56,7 +58,11 @@ async def _check_post_media(
     """
     match = _DISCORD_MSG_RE.search(post_url)
     if not match:
-        return False, "URL doesn't look like a direct Discord message link (expected discord.com/channels/…)."
+        return False, "URL doesn't look like a Discord message link (expected discord.com/channels/…)."
+
+    if not match.group(2):
+        # Channel-only link — can't fetch a specific message; let mods verify.
+        return False, "Link points to a channel, not a specific message — manual media check required."
 
     channel_id, message_id = int(match.group(1)), int(match.group(2))
 
