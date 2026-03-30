@@ -409,6 +409,7 @@ class SerialsCog(commands.Cog, name="Serials"):
             await session.flush()
             pt = request.printer_type
             request_id_val = request.id
+            old_message_id = request.discord_message_id
 
         embed_confirm = request_received(request, pt, self.settings)
         await interaction.followup.send(
@@ -419,7 +420,21 @@ class SerialsCog(commands.Cog, name="Serials"):
 
         mod_channel = self.bot.get_channel(self.settings.discord_mod_notify_channel_id)
         if mod_channel:
-            embed_mod = request_pending_review(request, pt, user, self.settings, media_warning=media_warning)
+            # Mark the old mod message as superseded.
+            if old_message_id:
+                try:
+                    old_msg = await mod_channel.fetch_message(int(old_message_id))
+                    superseded = discord.Embed(
+                        title="↩️ Request Re-submitted",
+                        description=f"Request `#{request_id_val}` was re-submitted by <@{user.discord_id}>. See the new message below.",
+                        color=discord.Color.greyple(),
+                    )
+                    superseded.set_footer(text="Serial System")
+                    await old_msg.edit(embed=superseded, view=None)
+                except discord.HTTPException:
+                    log.warning("Could not update old mod message %s for resubmit", old_message_id)
+
+            embed_mod = request_pending_review(request, pt, user, self.settings, media_warning=media_warning, resubmitted=True)
             view = _ReviewView(request_id=request_id_val, bot=self.bot)
             mod_msg = await mod_channel.send(embed=embed_mod, view=view)
             async with get_session() as session:

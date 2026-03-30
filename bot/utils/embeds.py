@@ -43,10 +43,11 @@ def request_pending_review(
     requester: User,
     settings: Settings,
     media_warning: str | None = None,
+    resubmitted: bool = False,
 ) -> discord.Embed:
     embed = discord.Embed(
-        title="New Serial Request",
-        color=discord.Color.yellow(),
+        title="🔄 Request Re-submitted" if resubmitted else "New Serial Request",
+        color=discord.Color.orange() if resubmitted else discord.Color.yellow(),
         timestamp=request.submitted_at,
     )
     embed.add_field(name="Request ID", value=f"`#{request.id}`", inline=True)
