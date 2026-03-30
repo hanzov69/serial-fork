@@ -1,16 +1,16 @@
-# BB-Serial Helm Chart — default values
+# Serial Fork Helm Chart — default values
 # Override any of these in your own values file or with --set flags.
 
 # -- Container images
 image:
   bot:
-    repository: ghcr.io/hanzov69/bb-serial-bot
+    repository: ghcr.io/hanzov69/serial-fork-bot
     tag: "latest"
     # Always pull when using the latest tag so nodes never run stale images.
     # Pin to a specific tag (e.g. "0.2.1") and switch to IfNotPresent in production.
     pullPolicy: Always
   web:
-    repository: ghcr.io/hanzov69/bb-serial-web
+    repository: ghcr.io/hanzov69/serial-fork-web
     tag: "latest"
     pullPolicy: Always
 
@@ -113,7 +113,7 @@ ingress:
   host: "serials.yourdomain.com"
   tls:
     enabled: false
-    secretName: "bb-serial-tls"
+    secretName: "serial-fork-tls"
 
 # ── Resources ─────────────────────────────────────────────────────────
 resources:

@@ -23,9 +23,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - image: bb-serial-bot
+          - image: serial-fork-bot
             dockerfile: Dockerfile.bot
-          - image: bb-serial-web
+          - image: serial-fork-web
             dockerfile: Dockerfile.web
 
     steps:

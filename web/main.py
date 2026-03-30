@@ -24,7 +24,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         settings = Settings.load(config_path)
 
     app = FastAPI(
-        title="BB Serial",
+        title="Serial Fork",
         description="Serial number tracking for 3D printer makers",
         version="0.1.0",
         docs_url="/api/docs" if settings.debug else None,

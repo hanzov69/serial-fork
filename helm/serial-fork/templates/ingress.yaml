@@ -2,9 +2,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "bb-serial.fullname" . }}
+  name: {{ include "serial-fork.fullname" . }}
   labels:
-    {{- include "bb-serial.labels" . | nindent 4 }}
+    {{- include "serial-fork.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -27,7 +27,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "bb-serial.fullname" . }}
+                name: {{ include "serial-fork.fullname" . }}
                 port:
                   name: http
 {{- end }}

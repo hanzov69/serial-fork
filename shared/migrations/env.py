@@ -21,7 +21,7 @@ target_metadata = Base.metadata
 
 
 def get_db_url() -> str:
-    url = os.environ.get("DB_PATH") or os.environ.get("db_path") or "/data/bb_serial.db"
+    url = os.environ.get("DB_PATH") or os.environ.get("db_path") or "/data/serial_fork.db"
     # Alembic uses sync driver
     return f"sqlite:///{url}"
 

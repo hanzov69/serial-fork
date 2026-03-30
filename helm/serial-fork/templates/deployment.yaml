@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "bb-serial.fullname" . }}
+  name: {{ include "serial-fork.fullname" . }}
   labels:
-    {{- include "bb-serial.labels" . | nindent 4 }}
+    {{- include "serial-fork.labels" . | nindent 4 }}
 spec:
   # SQLite does not support concurrent writers across multiple pods.
   # Keep replicas at 1. To scale, migrate to PostgreSQL first.
   replicas: 1
   selector:
     matchLabels:
-      {{- include "bb-serial.selectorLabels" . | nindent 6 }}
+      {{- include "serial-fork.selectorLabels" . | nindent 6 }}
   strategy:
     # Recreate avoids two pods holding the SQLite write lock simultaneously
     # during a rolling update.
@@ -18,7 +18,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "bb-serial.selectorLabels" . | nindent 8 }}
+        {{- include "serial-fork.selectorLabels" . | nindent 8 }}
       {{- with .Values.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
@@ -45,9 +45,9 @@ spec:
               protocol: TCP
           envFrom:
             - configMapRef:
-                name: {{ include "bb-serial.fullname" . }}
+                name: {{ include "serial-fork.fullname" . }}
             - secretRef:
-                name: {{ include "bb-serial.secretName" . }}
+                name: {{ include "serial-fork.secretName" . }}
           volumeMounts:
             - name: data
               mountPath: /data
@@ -73,9 +73,9 @@ spec:
           imagePullPolicy: {{ .Values.image.bot.pullPolicy }}
           envFrom:
             - configMapRef:
-                name: {{ include "bb-serial.fullname" . }}
+                name: {{ include "serial-fork.fullname" . }}
             - secretRef:
-                name: {{ include "bb-serial.secretName" . }}
+                name: {{ include "serial-fork.secretName" . }}
           volumeMounts:
             - name: data
               mountPath: /data
@@ -93,7 +93,7 @@ spec:
         - name: data
           {{- if .Values.persistence.enabled }}
           persistentVolumeClaim:
-            claimName: {{ include "bb-serial.pvcName" . }}
+            claimName: {{ include "serial-fork.pvcName" . }}
           {{- else }}
           emptyDir: {}
           {{- end }}

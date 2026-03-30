@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     web_port: int = Field(default=8000)
 
     # --- Database ---
-    db_path: str = Field(default="/data/bb_serial.db", description="Path to SQLite database file")
+    db_path: str = Field(default="/data/serial_fork.db", description="Path to SQLite database file")
 
     # --- Serial display ---
     # serial_prefix is no longer a global setting — each PrinterType has its own identifier.

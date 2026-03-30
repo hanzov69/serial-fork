@@ -1,14 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "bb-serial.name" -}}
+{{- define "serial-fork.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "bb-serial.fullname" -}}
+{{- define "serial-fork.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -24,16 +24,16 @@ Create a default fully qualified app name.
 {{/*
 Create chart label value.
 */}}
-{{- define "bb-serial.chart" -}}
+{{- define "serial-fork.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels applied to all resources.
 */}}
-{{- define "bb-serial.labels" -}}
-helm.sh/chart: {{ include "bb-serial.chart" . }}
-{{ include "bb-serial.selectorLabels" . }}
+{{- define "serial-fork.labels" -}}
+helm.sh/chart: {{ include "serial-fork.chart" . }}
+{{ include "serial-fork.selectorLabels" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
@@ -41,29 +41,29 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels — used for pod selection and service routing.
 */}}
-{{- define "bb-serial.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "bb-serial.name" . }}
+{{- define "serial-fork.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "serial-fork.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Name of the Secret that holds sensitive environment variables.
 */}}
-{{- define "bb-serial.secretName" -}}
+{{- define "serial-fork.secretName" -}}
 {{- if .Values.secrets.existingSecret -}}
 {{ .Values.secrets.existingSecret }}
 {{- else -}}
-{{ include "bb-serial.fullname" . }}
+{{ include "serial-fork.fullname" . }}
 {{- end -}}
 {{- end }}
 
 {{/*
 Name of the PVC for the SQLite database.
 */}}
-{{- define "bb-serial.pvcName" -}}
+{{- define "serial-fork.pvcName" -}}
 {{- if .Values.persistence.existingClaim -}}
 {{ .Values.persistence.existingClaim }}
 {{- else -}}
-{{ include "bb-serial.fullname" . }}-data
+{{ include "serial-fork.fullname" . }}-data
 {{- end -}}
 {{- end }}

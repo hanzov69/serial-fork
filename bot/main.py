@@ -1,5 +1,5 @@
 """
-BB-Serial Discord bot entry point.
+Serial Fork Discord bot entry point.
 """
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
-# BB-Serial Deployment Guide
+# Serial Fork Deployment Guide
 
-This guide covers everything needed to deploy BB-Serial in your environment. It is written for administrators who are setting up the system for the first time.
+This guide covers everything needed to deploy Serial Fork in your environment. It is written for administrators who are setting up the system for the first time.
 
 ---
 
@@ -47,7 +47,7 @@ You need to create two things in the Discord Developer Portal: a **bot** (for sl
 ### 2a. Create the Application
 
 1. Go to [discord.com/developers/applications](https://discord.com/developers/applications)
-2. Click **New Application**, give it a name (e.g. `BB Serials`), and click Create
+2. Click **New Application**, give it a name (e.g. `Serial Forks`), and click Create
 3. Under **General Information**, note down the **Application ID** — this is your `discord_client_id`
 
 ### 2b. Create the Bot
@@ -99,8 +99,8 @@ You need three channel/server IDs. To get them:
 ## 3. Getting the Code
 
 ```bash
-git clone <your-repo-url> bb-serial
-cd bb-serial
+git clone <your-repo-url> serial-fork
+cd serial-fork
 ```
 
 ---
@@ -183,7 +183,7 @@ Every setting can be placed in `config.toml` (snake_case key) or set as an envir
 
 | Setting | Env var | Default | Description |
 |---|---|---|---|
-| `db_path` | `DB_PATH` | `/data/bb_serial.db` | Absolute path to the SQLite database file. In Docker, this should be inside the named volume (e.g. `/data/bb_serial.db`). Change only if you have a custom volume mount. |
+| `db_path` | `DB_PATH` | `/data/serial_fork.db` | Absolute path to the SQLite database file. In Docker, this should be inside the named volume (e.g. `/data/serial_fork.db`). Change only if you have a custom volume mount. |
 
 #### Serial Number Display
 
@@ -231,7 +231,7 @@ docker compose up --build -d
 
 This will:
 1. Build the `bot` and `web` Docker images
-2. Create a named Docker volume (`bb-serial_db_data`) for the SQLite database
+2. Create a named Docker volume (`serial-fork_db_data`) for the SQLite database
 3. Start both containers; each runs `alembic upgrade head` on startup to initialize the database schema
 4. Expose the web app on port `8000` (configurable via `WEB_PORT` in `.env`)
 
@@ -253,7 +253,7 @@ docker compose logs -f web      # web only
 
 ## 6. First Deployment — Kubernetes (Helm)
 
-Container images are published to GHCR and the chart lives in `helm/bb-serial/`.
+Container images are published to GHCR and the chart lives in `helm/serial-fork/`.
 
 ### 6a. Prerequisites
 
@@ -264,7 +264,7 @@ Container images are published to GHCR and the chart lives in `helm/bb-serial/`.
 ### 6b. Create the namespace
 
 ```bash
-kubectl create namespace bb-serial
+kubectl create namespace serial-fork
 ```
 
 ### 6c. Image pull secret (private registry)
@@ -280,13 +280,13 @@ kubectl create secret docker-registry ghcr-pull-secret \
   --docker-server=ghcr.io \
   --docker-username=YOUR_GITHUB_USERNAME \
   --docker-password=YOUR_PAT \
-  -n bb-serial
+  -n serial-fork
 ```
 
 Alternatively, fill in `helm/ghcr-pull-secret.yaml` (see the comments inside) and apply it:
 
 ```bash
-kubectl apply -f helm/ghcr-pull-secret.yaml -n bb-serial
+kubectl apply -f helm/ghcr-pull-secret.yaml -n serial-fork
 ```
 
 Then reference it in your values file:
@@ -299,7 +299,7 @@ imagePullSecrets:
 ### 6d. Create your values file
 
 ```bash
-cp helm/bb-serial/values.example.yaml my-values.yaml
+cp helm/serial-fork/values.example.yaml my-values.yaml
 ```
 
 Edit `my-values.yaml`. The minimum required fields are:
@@ -331,7 +331,7 @@ ingress:
   host: "serials.yourdomain.com"
   tls:
     enabled: true
-    secretName: "bb-serial-tls"
+    secretName: "serial-fork-tls"
 ```
 
 > **Security:** Do not commit `my-values.yaml` if it contains plaintext secrets. Pass secrets via `--set` or use `secrets.existingSecret` to reference a pre-existing Kubernetes Secret (e.g. managed by External Secrets Operator).
@@ -349,33 +349,33 @@ This must exactly match `web.baseUrl + /auth/callback`. No port should be includ
 ### 6f. Install the chart
 
 ```bash
-helm install bb-serial ./helm/bb-serial \
+helm install serial-fork ./helm/serial-fork \
   -f my-values.yaml \
-  -n bb-serial
+  -n serial-fork
 ```
 
 Check that the pod starts:
 
 ```bash
-kubectl get pods -n bb-serial
-kubectl logs -l app.kubernetes.io/instance=bb-serial -c web -n bb-serial
-kubectl logs -l app.kubernetes.io/instance=bb-serial -c bot -n bb-serial
+kubectl get pods -n serial-fork
+kubectl logs -l app.kubernetes.io/instance=serial-fork -c web -n serial-fork
+kubectl logs -l app.kubernetes.io/instance=serial-fork -c bot -n serial-fork
 ```
 
 ### 6g. Sync Discord slash commands (first deploy only)
 
 ```bash
-helm upgrade bb-serial ./helm/bb-serial \
-  --set config.syncCommands=true --reuse-values -n bb-serial
+helm upgrade serial-fork ./helm/serial-fork \
+  --set config.syncCommands=true --reuse-values -n serial-fork
 # Wait ~30 seconds for the bot to restart and sync, then flip it back:
-helm upgrade bb-serial ./helm/bb-serial \
-  --set config.syncCommands=false --reuse-values -n bb-serial
+helm upgrade serial-fork ./helm/serial-fork \
+  --set config.syncCommands=false --reuse-values -n serial-fork
 ```
 
 ### 6h. Upgrading
 
 ```bash
-helm upgrade bb-serial ./helm/bb-serial -f my-values.yaml -n bb-serial
+helm upgrade serial-fork ./helm/serial-fork -f my-values.yaml -n serial-fork
 ```
 
 Database migrations run automatically on pod startup. The `Recreate` deployment strategy ensures the old pod terminates before the new one starts, preventing concurrent SQLite write access.
@@ -397,7 +397,7 @@ initial_owner_username = "Alice"
 
 Find your Discord user ID: in Discord with Developer Mode enabled, right-click your username → **Copy User ID**.
 
-On startup, if no owner exists yet, BB-Serial automatically creates this user with the Owner role. These settings are safe to leave in place permanently — they are ignored once an owner exists.
+On startup, if no owner exists yet, Serial Fork automatically creates this user with the Owner role. These settings are safe to leave in place permanently — they are ignored once an owner exists.
 
 After the owner account is created, log in to the web app with that Discord account to activate it, then manage all further roles from `/admin/users` or via bot commands (`/addmod`, `/removemod`).
 
@@ -524,7 +524,7 @@ Rescinded serials are **not deleted** — the record remains with a `rescinded_a
 
 The web container does not handle TLS termination. In production, place a reverse proxy in front of it:
 
-**Nginx example** (`/etc/nginx/sites-available/bb-serial`):
+**Nginx example** (`/etc/nginx/sites-available/serial-fork`):
 ```nginx
 server {
     listen 443 ssl;
@@ -551,11 +551,11 @@ Only port 8000 (or 443 via the reverse proxy) needs to be internet-accessible. T
 
 ### Database Backups
 
-The SQLite database lives in the Docker volume `bb-serial_db_data`, mounted at `/data/bb_serial.db` inside the containers.
+The SQLite database lives in the Docker volume `serial-fork_db_data`, mounted at `/data/serial_fork.db` inside the containers.
 
 #### Web UI download (recommended for ad-hoc backups)
 
-BB-Serial has a built-in hot backup endpoint. Navigate to **Backup DB** in the navbar (visible to owners, and to admins if `backup_allow_admin = true`). Clicking the link downloads a timestamped zip archive (`bb_serial_backup_YYYYMMDD_HHMMSS.zip`) containing the SQLite database file. The backup is a fully consistent snapshot taken with SQLite's online backup API — safe to download while the app is running.
+Serial Fork has a built-in hot backup endpoint. Navigate to **Backup DB** in the navbar (visible to owners, and to admins if `backup_allow_admin = true`). Clicking the link downloads a timestamped zip archive (`serial_fork_backup_YYYYMMDD_HHMMSS.zip`) containing the SQLite database file. The backup is a fully consistent snapshot taken with SQLite's online backup API — safe to download while the app is running.
 
 To enable backup downloads for admin-role users, add to `config.toml`:
 
@@ -566,21 +566,21 @@ backup_allow_admin = true
 #### Manual backup via the host
 
 ```bash
-docker compose exec web sqlite3 /data/bb_serial.db ".backup '/data/backup_$(date +%Y%m%d).db'"
+docker compose exec web sqlite3 /data/serial_fork.db ".backup '/data/backup_$(date +%Y%m%d).db'"
 ```
 
 #### Automated daily backup (host crontab)
 
 ```bash
-0 3 * * * docker exec bb-serial-web-1 sqlite3 /data/bb_serial.db ".backup '/data/backup_$(date +\%Y\%m\%d).db'" && docker cp bb-serial-web-1:/data/backup_$(date +%Y%m%d).db /your/backup/path/
+0 3 * * * docker exec serial-fork-web-1 sqlite3 /data/serial_fork.db ".backup '/data/backup_$(date +\%Y\%m\%d).db'" && docker cp serial-fork-web-1:/data/backup_$(date +%Y%m%d).db /your/backup/path/
 ```
 
 #### Restoring from backup
 
 ```bash
 docker compose down
-docker run --rm -v bb-serial_db_data:/data -v /your/backup/path:/backup alpine \
-  cp /backup/backup_20240101.db /data/bb_serial.db
+docker run --rm -v serial-fork_db_data:/data -v /your/backup/path:/backup alpine \
+  cp /backup/backup_20240101.db /data/serial_fork.db
 docker compose up -d
 ```
 
@@ -655,7 +655,7 @@ docker compose up --build -d
 ### Viewing the database directly
 
 ```bash
-docker compose exec web sqlite3 /data/bb_serial.db
+docker compose exec web sqlite3 /data/serial_fork.db
 ```
 
 Useful queries:

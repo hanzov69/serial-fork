@@ -695,8 +695,8 @@ async def download_backup(
     """Download a hot backup of the SQLite database as a zip archive."""
     db_path = request.app.state.settings.db_path
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    db_filename = f"bb_serial_backup_{timestamp}.db"
-    zip_filename = f"bb_serial_backup_{timestamp}.zip"
+    db_filename = f"serial_fork_backup_{timestamp}.db"
+    zip_filename = f"serial_fork_backup_{timestamp}.zip"
 
     loop = asyncio.get_event_loop()
     data = await loop.run_in_executor(None, _hot_backup_zip, db_path, db_filename)

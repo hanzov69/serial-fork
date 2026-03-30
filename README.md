@@ -1,6 +1,6 @@
-# BB-Serial
+# Serial Fork
 
-A Discord bot + web registry for issuing serial numbers to makers who build a 3D printer. Inspired by the Voron community serial system, BB-Serial provides native Discord integration with a dedicated web registry for the [Baby Belt Pro](https://github.com/RobMink/BabyBeltPro) community.
+A Discord bot + web registry for issuing serial numbers to makers who build a 3D printer. Inspired by the Voron community serial system, Serial Fork provides native Discord integration with a dedicated web registry for the [Baby Belt Pro](https://github.com/RobMink/BabyBeltPro) community.
 
 - Moderators receive approval requests directly in Discord with one-click Approve/Reject buttons
 - Users can track their request status via the web app
@@ -14,7 +14,7 @@ A Discord bot + web registry for issuing serial numbers to makers who build a 3D
 
 ### Docker Compose
 
-The fastest way to run BB-Serial locally or on a single server.
+The fastest way to run Serial Fork locally or on a single server.
 
 **1. Copy and edit the config:**
 
@@ -46,22 +46,22 @@ For production deployments on Kubernetes.
 **1. Copy and edit the values file:**
 
 ```bash
-cp helm/bb-serial/values.example.yaml my-values.yaml
+cp helm/serial-fork/values.example.yaml my-values.yaml
 # Fill in your Discord credentials, domain name, and other settings
 ```
 
 **2. Install the chart:**
 
 ```bash
-helm install bb-serial ./helm/bb-serial -f my-values.yaml -n bb-serial --create-namespace
+helm install serial-fork ./helm/serial-fork -f my-values.yaml -n serial-fork --create-namespace
 ```
 
 **3. Register Discord slash commands** (one-time, after first deploy):
 
 ```bash
-helm upgrade bb-serial ./helm/bb-serial --set config.syncCommands=true --reuse-values
+helm upgrade serial-fork ./helm/serial-fork --set config.syncCommands=true --reuse-values
 # Wait ~30 seconds, then flip it back:
-helm upgrade bb-serial ./helm/bb-serial --set config.syncCommands=false --reuse-values
+helm upgrade serial-fork ./helm/serial-fork --set config.syncCommands=false --reuse-values
 ```
 
 **4. Register the OAuth2 redirect URI** in the Discord Developer Portal → OAuth2 → Redirects:
@@ -85,13 +85,13 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for full instructions covering:
 
 ## Architecture
 
-BB-Serial consists of two services that share a SQLite database:
+Serial Fork consists of two services that share a SQLite database:
 
 | Service | Description |
 |---------|-------------|
-| `bb-serial-bot` | discord.py bot — handles slash commands and mod interactions |
-| `bb-serial-web` | FastAPI web app — public registry, OAuth2 login, admin UI |
+| `serial-fork-bot` | discord.py bot — handles slash commands and mod interactions |
+| `serial-fork-web` | FastAPI web app — public registry, OAuth2 login, admin UI |
 
 Container images are published to GitHub Container Registry:
-- `ghcr.io/hanzov69/bb-serial-bot`
-- `ghcr.io/hanzov69/bb-serial-web`
+- `ghcr.io/hanzov69/serial-fork-bot`
+- `ghcr.io/hanzov69/serial-fork-web`

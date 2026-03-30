@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "bb-serial.fullname" . }}-data
+  name: {{ include "serial-fork.fullname" . }}-data
   labels:
-    {{- include "bb-serial.labels" . | nindent 4 }}
+    {{- include "serial-fork.labels" . | nindent 4 }}
   annotations:
     # Retain the PVC on chart uninstall to prevent data loss.
     helm.sh/resource-policy: keep

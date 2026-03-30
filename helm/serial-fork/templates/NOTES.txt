@@ -1,4 +1,4 @@
-BB-Serial has been deployed!
+Serial Fork has been deployed!
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -21,7 +21,7 @@ BB-Serial has been deployed!
 {{- else }}
 3. Access the web app via port-forward:
 
-   kubectl port-forward svc/{{ include "bb-serial.fullname" . }} 8000:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+   kubectl port-forward svc/{{ include "serial-fork.fullname" . }} 8000:{{ .Values.service.port }} -n {{ .Release.Namespace }}
 
    Then open http://localhost:8000
 
@@ -33,10 +33,10 @@ IMPORTANT — Discord slash commands:
   After your first deploy, run a one-time upgrade with syncCommands=true
   to register slash commands with Discord, then flip it back to false:
 
-    helm upgrade {{ .Release.Name }} ./helm/bb-serial \
+    helm upgrade {{ .Release.Name }} ./helm/serial-fork \
       --set config.syncCommands=true --reuse-values
     # wait ~30s, then:
-    helm upgrade {{ .Release.Name }} ./helm/bb-serial \
+    helm upgrade {{ .Release.Name }} ./helm/serial-fork \
       --set config.syncCommands=false --reuse-values
 
 IMPORTANT — OAuth2 redirect URI:

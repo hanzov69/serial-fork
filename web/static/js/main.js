@@ -1,4 +1,4 @@
-// BB-Serial — minimal JS
+// Serial Fork — minimal JS
 // Most functionality is server-rendered; this file handles small enhancements.
 
 document.addEventListener('DOMContentLoaded', () => {
