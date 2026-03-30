@@ -227,3 +227,14 @@ class AuditLog(Base):
     actor: Mapped["User"] = relationship("User", foreign_keys=[actor_id])
     target_user: Mapped["User | None"] = relationship("User", foreign_keys=[target_user_id])
     serial: Mapped["Serial | None"] = relationship("Serial", foreign_keys=[serial_id])
+
+
+class SystemConfig(Base):
+    """
+    Runtime-editable configuration overrides stored in the database.
+    Values here take precedence over config.toml / environment variables.
+    """
+    __tablename__ = "system_config"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    value: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from shared.database import is_serial_number_free, next_serial_number
+from shared.database import get_config, is_serial_number_free, next_serial_number, set_config
 from shared.models import (
     AuditLog,
     PrinterType,
@@ -421,8 +421,8 @@ async def rescind_serial(
 # Printer type management (admin)
 # ------------------------------------------------------------------
 
-@router.get("/printers", response_class=HTMLResponse)
-async def printers_list(
+@router.get("/config", response_class=HTMLResponse)
+async def config_page(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_admin),
@@ -431,11 +431,41 @@ async def printers_list(
         select(PrinterType).order_by(PrinterType.identifier)
     )
     printer_types = list(result.scalars())
+    settings = request.app.state.settings
     return _templates(request).TemplateResponse(
         request,
-        "admin_printers.html",
-        {"printer_types": printer_types, "current_user": current_user},
+        "admin_config.html",
+        {
+            "printer_types": printer_types,
+            "current_user": current_user,
+            "forum_channel_id": await get_config(db, "discord_forum_channel_id") or str(settings.discord_forum_channel_id),
+            "mod_notify_channel_id": await get_config(db, "discord_mod_notify_channel_id") or str(settings.discord_mod_notify_channel_id),
+        },
     )
+
+
+@router.get("/printers", response_class=HTMLResponse)
+async def printers_redirect(request: Request):
+    return RedirectResponse("/admin/config", status_code=301)
+
+
+@router.post("/config/channels")
+async def save_channel_config(
+    discord_forum_channel_id: str = Form(default=""),
+    discord_mod_notify_channel_id: str = Form(default=""),
+    request: Request = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    for key, raw in (
+        ("discord_forum_channel_id", discord_forum_channel_id),
+        ("discord_mod_notify_channel_id", discord_mod_notify_channel_id),
+    ):
+        val = raw.strip() or None
+        if val and not re.match(r"^\d{17,20}$", val):
+            raise HTTPException(status_code=400, detail=f"{key} must be a numeric snowflake (17–20 digits)")
+        await set_config(db, key, val)
+    return RedirectResponse("/admin/config", status_code=303)
 
 
 _ROLE_ID_RE = re.compile(r"^\d{17,20}$")
@@ -483,7 +513,7 @@ async def create_printer_type(
         is_active=True,
         created_by_id=current_user.id,
     ))
-    return RedirectResponse("/admin/printers", status_code=303)
+    return RedirectResponse("/admin/config", status_code=303)
 
 
 @router.post("/printers/{printer_id}/role")
@@ -504,7 +534,7 @@ async def set_printer_role(
         raise HTTPException(status_code=400, detail="Discord Role ID must be a numeric snowflake (17–20 digits)")
 
     pt.discord_role_id = clean_role_id
-    return RedirectResponse("/admin/printers", status_code=303)
+    return RedirectResponse("/admin/config", status_code=303)
 
 
 @router.post("/printers/{printer_id}/tag")
@@ -525,7 +555,7 @@ async def set_printer_tag(
         raise HTTPException(status_code=400, detail="Discord Tag ID must be a numeric snowflake (17–20 digits)")
 
     pt.discord_tag_id = clean_tag_id
-    return RedirectResponse("/admin/printers", status_code=303)
+    return RedirectResponse("/admin/config", status_code=303)
 
 
 @router.post("/printers/{printer_id}/toggle")
@@ -540,7 +570,7 @@ async def toggle_printer_type(
     if pt is None:
         raise HTTPException(status_code=404, detail="Printer type not found")
     pt.is_active = not pt.is_active
-    return RedirectResponse("/admin/printers", status_code=303)
+    return RedirectResponse("/admin/config", status_code=303)
 
 
 # ------------------------------------------------------------------

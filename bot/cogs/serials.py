@@ -23,7 +23,7 @@ from bot.utils.embeds import (
     serial_issued,
     serial_lookup,
 )
-from shared.database import get_session, next_serial_number
+from shared.database import get_config, get_session, next_serial_number
 from shared.models import (
     AuditLog,
     PrinterType,
@@ -34,6 +34,13 @@ from shared.models import (
 )
 
 log = logging.getLogger(__name__)
+
+
+async def _channel_id(key: str, fallback: int) -> int:
+    """Return the DB-configured channel ID for key, or the settings fallback."""
+    async with get_session() as session:
+        val = await get_config(session, key)
+    return int(val) if val else fallback
 
 
 async def _check_thread_media(thread: discord.Thread) -> tuple[bool, str | None]:
@@ -135,9 +142,14 @@ class SerialsCog(commands.Cog, name="Serials"):
     async def cmd_request(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True)
 
-        # Must be used inside a forum thread.
+        # Must be used inside the configured forum channel.
         thread = interaction.channel
-        if not isinstance(thread, discord.Thread) or not isinstance(thread.parent, discord.ForumChannel):
+        forum_channel_id = await _channel_id("discord_forum_channel_id", self.settings.discord_forum_channel_id)
+        if (
+            not isinstance(thread, discord.Thread)
+            or not isinstance(thread.parent, discord.ForumChannel)
+            or thread.parent_id != forum_channel_id
+        ):
             await interaction.followup.send(
                 "Please use `/request` inside your build's forum post thread.",
                 ephemeral=True,
@@ -215,7 +227,8 @@ class SerialsCog(commands.Cog, name="Serials"):
         embed_confirm = request_received(request, pt, self.settings)
         await interaction.followup.send(embed=embed_confirm, ephemeral=True)
 
-        mod_channel = self.bot.get_channel(self.settings.discord_mod_notify_channel_id)
+        mod_channel_id = await _channel_id("discord_mod_notify_channel_id", self.settings.discord_mod_notify_channel_id)
+        mod_channel = self.bot.get_channel(mod_channel_id)
         if mod_channel:
             embed_mod = request_pending_review(request, pt, user, self.settings, media_warning=media_warning)
             view = _ReviewView(request_id=request_id, bot=self.bot)
@@ -224,9 +237,7 @@ class SerialsCog(commands.Cog, name="Serials"):
                 req = await session.get(SerialRequest, request_id)
                 req.discord_message_id = str(mod_msg.id)
         else:
-            log.warning(
-                "Mod notify channel %d not found", self.settings.discord_mod_notify_channel_id
-            )
+            log.warning("Mod notify channel %d not found", mod_channel_id)
 
     # ------------------------------------------------------------------
     # /approve
@@ -316,9 +327,14 @@ class SerialsCog(commands.Cog, name="Serials"):
     ) -> None:
         await interaction.response.defer(ephemeral=True)
 
-        # Must be used inside a forum thread owned by the requester.
+        # Must be used inside the configured forum channel.
         thread = interaction.channel
-        if not isinstance(thread, discord.Thread) or not isinstance(thread.parent, discord.ForumChannel):
+        forum_channel_id = await _channel_id("discord_forum_channel_id", self.settings.discord_forum_channel_id)
+        if (
+            not isinstance(thread, discord.Thread)
+            or not isinstance(thread.parent, discord.ForumChannel)
+            or thread.parent_id != forum_channel_id
+        ):
             await interaction.followup.send(
                 "Please use `/resubmit` inside your build's forum post thread.",
                 ephemeral=True,
@@ -398,7 +414,8 @@ class SerialsCog(commands.Cog, name="Serials"):
             ephemeral=True,
         )
 
-        mod_channel = self.bot.get_channel(self.settings.discord_mod_notify_channel_id)
+        mod_channel_id = await _channel_id("discord_mod_notify_channel_id", self.settings.discord_mod_notify_channel_id)
+        mod_channel = self.bot.get_channel(mod_channel_id)
         if mod_channel:
             # Mark the old mod message as superseded.
             if old_message_id:
@@ -531,7 +548,8 @@ async def _do_approve(
         log.warning("Could not DM requester %s", requester.discord_id)
 
     if mod_message_id:
-        mod_channel = bot.get_channel(settings.discord_mod_notify_channel_id)
+        mod_channel_id = await _channel_id("discord_mod_notify_channel_id", settings.discord_mod_notify_channel_id)
+        mod_channel = bot.get_channel(mod_channel_id)
         if mod_channel:
             try:
                 mod_msg = await mod_channel.fetch_message(int(mod_message_id))
@@ -626,7 +644,8 @@ async def _do_reject(
         log.warning("Could not DM requester %s", requester.discord_id)
 
     if mod_message_id:
-        mod_channel = bot.get_channel(bot.settings.discord_mod_notify_channel_id)
+        mod_channel_id = await _channel_id("discord_mod_notify_channel_id", bot.settings.discord_mod_notify_channel_id)
+        mod_channel = bot.get_channel(mod_channel_id)
         if mod_channel:
             try:
                 mod_msg = await mod_channel.fetch_message(int(mod_message_id))

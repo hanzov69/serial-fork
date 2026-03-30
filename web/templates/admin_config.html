@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Config — Registry{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Config</h1>
+</div>
+
+<!-- ── Discord Channel Settings ─────────────────────────────────────── -->
+<h2 style="font-size:1rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:0.75rem">
+  Discord Channels
+</h2>
+<p class="muted" style="margin-bottom:1rem">
+  These values override the config file at runtime. Leave blank to use the value
+  from <code>config.toml</code> / environment variables.
+</p>
+
+<form method="post" action="/admin/config/channels" style="margin-bottom:2.5rem">
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; max-width:640px">
+    <div>
+      <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:0.25rem">
+        Forum Channel ID
+      </label>
+      <input type="text" name="discord_forum_channel_id"
+             value="{{ forum_channel_id or '' }}"
+             placeholder="e.g. 123456789012345678"
+             pattern="\d{17,20}" title="Numeric snowflake ID (17–20 digits)"
+             class="input-full">
+      <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem">
+        The forum channel where members post builds and use <code>/request</code>.
+      </p>
+    </div>
+    <div>
+      <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:0.25rem">
+        Mod Notify Channel ID
+      </label>
+      <input type="text" name="discord_mod_notify_channel_id"
+             value="{{ mod_notify_channel_id or '' }}"
+             placeholder="e.g. 123456789012345678"
+             pattern="\d{17,20}" title="Numeric snowflake ID (17–20 digits)"
+             class="input-full">
+      <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem">
+        The channel where moderators receive approval/rejection notifications.
+      </p>
+    </div>
+  </div>
+  <button type="submit" class="btn btn-primary" style="margin-top:0.75rem">Save Channels</button>
+</form>
+
+<!-- ── Printer Types ─────────────────────────────────────────────────── -->
+<h2 style="font-size:1rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:0.75rem">
+  Printer Types <span class="badge" style="font-size:0.8rem; margin-left:0.4rem">{{ printer_types|length }}</span>
+</h2>
+<p class="muted" style="margin-bottom:1rem">
+  Each printer type has its own independent serial number sequence.
+  <strong>BB-001</strong> and <strong>CC-001</strong> are completely separate serials.
+  Identifiers are 1–3 alphanumeric characters and cannot be changed after creation.
+</p>
+
+<div class="detail-grid" style="grid-template-columns: 1fr 340px">
+  <div>
+    <table class="serial-table">
+      <thead>
+        <tr>
+          <th>Identifier</th>
+          <th>Name</th>
+          <th>Description</th>
+          <th>Discord Role</th>
+          <th>Forum Tag ID</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pt in printer_types %}
+        <tr class="{{ 'muted' if not pt.is_active }}">
+          <td><span class="mono badge">{{ pt.identifier }}</span></td>
+          <td>{{ pt.name }}</td>
+          <td class="muted" style="font-size:0.85rem">{{ pt.description or '—' }}</td>
+          <td>
+            <form method="post" action="/admin/printers/{{ pt.id }}/role"
+                  style="display:flex; gap:0.4rem; align-items:center">
+              <input type="text" name="discord_role_id"
+                     value="{{ pt.discord_role_id or '' }}"
+                     placeholder="Role ID"
+                     pattern="\d{17,20}" title="Numeric snowflake ID (17–20 digits)"
+                     style="width:9rem; font-size:0.8rem; padding:0.2rem 0.4rem">
+              <button type="submit" class="btn btn-sm">Save</button>
+            </form>
+          </td>
+          <td>
+            <form method="post" action="/admin/printers/{{ pt.id }}/tag"
+                  style="display:flex; gap:0.4rem; align-items:center">
+              <input type="text" name="discord_tag_id"
+                     value="{{ pt.discord_tag_id or '' }}"
+                     placeholder="Tag ID"
+                     pattern="\d{17,20}" title="Numeric snowflake ID (17–20 digits)"
+                     style="width:9rem; font-size:0.8rem; padding:0.2rem 0.4rem">
+              <button type="submit" class="btn btn-sm">Save</button>
+            </form>
+          </td>
+          <td>
+            {% if pt.is_active %}
+              <span class="badge badge-active">Active</span>
+            {% else %}
+              <span class="badge badge-rescinded">Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            <form method="post" action="/admin/printers/{{ pt.id }}/toggle"
+                  onsubmit="return confirm('{{ 'Deactivate' if pt.is_active else 'Reactivate' }} {{ pt.name }}?')">
+              <button type="submit" class="btn btn-sm">
+                {{ 'Deactivate' if pt.is_active else 'Reactivate' }}
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="empty-state">No printer types defined.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <aside>
+    <div class="info-card">
+      <h3 style="margin-bottom:1rem; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted)">
+        Add Printer Type
+      </h3>
+      <form method="post" action="/admin/printers" style="display:flex; flex-direction:column; gap:0.75rem">
+        <div>
+          <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:0.25rem">
+            Identifier <span class="muted">(1–3 chars, e.g. BBP)</span>
+          </label>
+          <input type="text" name="identifier" required maxlength="3" pattern="[A-Za-z0-9]{1,3}"
+                 class="input-full" placeholder="BBP"
+                 style="text-transform:uppercase">
+        </div>
+        <div>
+          <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:0.25rem">
+            Name
+          </label>
+          <input type="text" name="name" required maxlength="100"
+                 class="input-full" placeholder="BabyBelt Pro">
+        </div>
+        <div>
+          <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:0.25rem">
+            Description <span class="muted">(optional)</span>
+          </label>
+          <input type="text" name="description" maxlength="300"
+                 class="input-full" placeholder="Short description">
+        </div>
+        <div>
+          <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:0.25rem">
+            Discord Role ID <span class="muted">(optional)</span>
+          </label>
+          <input type="text" name="discord_role_id"
+                 class="input-full" placeholder="e.g. 123456789012345678"
+                 pattern="\d{17,20}" title="Numeric snowflake ID (17–20 digits)">
+          <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem">
+            Assigned to the requester when their serial is approved.
+            Right-click a role in Discord (Developer Mode on) to copy its ID.
+          </p>
+        </div>
+        <div>
+          <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:0.25rem">
+            Forum Tag ID <span class="muted">(auto-created)</span>
+          </label>
+          <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem">
+            A forum tag matching the printer type name is automatically created in the
+            forum channel when you save. You can override the ID in the table if needed.
+          </p>
+        </div>
+        <button type="submit" class="btn btn-primary">Create</button>
+      </form>
+    </div>
+  </aside>
+</div>
+{% endblock %}

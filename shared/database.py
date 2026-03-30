@@ -143,6 +143,23 @@ async def bootstrap_owner(discord_id: str, username: str) -> None:
             log.info("Bootstrap: promoted existing user %s (%s) to Owner", user.username, discord_id)
 
 
+async def get_config(session: AsyncSession, key: str) -> str | None:
+    """Return the DB-stored override for a config key, or None if not set."""
+    from shared.models import SystemConfig  # avoid circular import
+    row = await session.get(SystemConfig, key)
+    return row.value if row else None
+
+
+async def set_config(session: AsyncSession, key: str, value: str | None) -> None:
+    """Upsert a config key in the database."""
+    from shared.models import SystemConfig  # avoid circular import
+    row = await session.get(SystemConfig, key)
+    if row is None:
+        session.add(SystemConfig(key=key, value=value))
+    else:
+        row.value = value
+
+
 @asynccontextmanager
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Context manager yielding a database session."""
