@@ -153,7 +153,7 @@ class AdminCog(commands.Cog, name="Admin"):
 
             if not serial.is_active:
                 await interaction.followup.send(
-                    f"Serial `{serial.display(self.settings.serial_pad_width)}` is already rescinded.",
+                    f"Serial `{serial.display(self.settings.serial_pad_width, self.settings.serial_delimiter)}` is already rescinded.",
                     ephemeral=True,
                 )
                 return
@@ -162,7 +162,7 @@ class AdminCog(commands.Cog, name="Admin"):
             serial.rescinded_by_id = admin.id
             serial.rescind_reason = reason
             session.add(AuditLog(actor_id=admin.id, action="rescind", serial_id=serial.id, details=f"reason={reason}"))
-            display = serial.display(self.settings.serial_pad_width)
+            display = serial.display(self.settings.serial_pad_width, self.settings.serial_delimiter)
 
         await interaction.followup.send(f"Serial **{display}** has been rescinded.", ephemeral=True)
 
@@ -198,7 +198,7 @@ class AdminCog(commands.Cog, name="Admin"):
 
             if not await is_serial_number_free(session, pt.id, serial_number):
                 await interaction.followup.send(
-                    f"`{pt.format_serial(serial_number, self.settings.serial_pad_width)}` is already issued.",
+                    f"`{pt.format_serial(serial_number, self.settings.serial_pad_width, self.settings.serial_delimiter)}` is already issued.",
                     ephemeral=True,
                 )
                 return
@@ -210,7 +210,7 @@ class AdminCog(commands.Cog, name="Admin"):
             )
             if existing:
                 await interaction.followup.send(
-                    f"`{pt.format_serial(serial_number, self.settings.serial_pad_width)}` is already reserved.",
+                    f"`{pt.format_serial(serial_number, self.settings.serial_pad_width, self.settings.serial_delimiter)}` is already reserved.",
                     ephemeral=True,
                 )
                 return
@@ -221,7 +221,7 @@ class AdminCog(commands.Cog, name="Admin"):
                 reason=reason,
                 reserved_by_id=admin.id,
             ))
-            display = pt.format_serial(serial_number, self.settings.serial_pad_width)
+            display = pt.format_serial(serial_number, self.settings.serial_pad_width, self.settings.serial_delimiter)
 
         msg = f"Reserved **{display}**."
         if reason:
@@ -259,13 +259,13 @@ class AdminCog(commands.Cog, name="Admin"):
             reservation = result.scalar_one_or_none()
             if reservation is None:
                 await interaction.followup.send(
-                    f"`{pt.format_serial(serial_number, self.settings.serial_pad_width)}` is not reserved.",
+                    f"`{pt.format_serial(serial_number, self.settings.serial_pad_width, self.settings.serial_delimiter)}` is not reserved.",
                     ephemeral=True,
                 )
                 return
 
             await session.delete(reservation)
-            display = pt.format_serial(serial_number, self.settings.serial_pad_width)
+            display = pt.format_serial(serial_number, self.settings.serial_pad_width, self.settings.serial_delimiter)
 
         await interaction.followup.send(f"Reservation for **{display}** removed.", ephemeral=True)
 
@@ -295,8 +295,9 @@ class AdminCog(commands.Cog, name="Admin"):
             description=f"**{len(reservations)}** reserved",
         )
         pad = self.settings.serial_pad_width
+        delim = self.settings.serial_delimiter
         for r in reservations[:25]:
-            display = r.printer_type.format_serial(r.serial_number, pad)
+            display = r.printer_type.format_serial(r.serial_number, pad, delim)
             embed.add_field(
                 name=display,
                 value=f"{r.reason or '*(no reason)*'} — {r.reserved_by.username}",
@@ -353,7 +354,7 @@ class AdminCog(commands.Cog, name="Admin"):
             if not await is_serial_number_free(session, request.printer_type_id, serial_number):
                 pt = request.printer_type
                 await interaction.followup.send(
-                    f"`{pt.format_serial(serial_number, self.settings.serial_pad_width)}` is already issued.",
+                    f"`{pt.format_serial(serial_number, self.settings.serial_pad_width, self.settings.serial_delimiter)}` is already issued.",
                     ephemeral=True,
                 )
                 return
@@ -391,7 +392,7 @@ class AdminCog(commands.Cog, name="Admin"):
             printer_type = request.printer_type
             requester = request.requester
 
-        display = printer_type.format_serial(serial_number, self.settings.serial_pad_width)
+        display = printer_type.format_serial(serial_number, self.settings.serial_pad_width, self.settings.serial_delimiter)
         await interaction.followup.send(
             f"Assigned **{display}** to request `#{request_id}`.", ephemeral=True
         )

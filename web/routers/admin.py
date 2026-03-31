@@ -141,7 +141,7 @@ async def approve_request(
 
     settings = request.app.state.settings
     pad = settings.serial_pad_width
-    serial_display = serial_request.printer_type.format_serial(serial_num, pad)
+    serial_display = serial_request.printer_type.format_serial(serial_num, pad, settings.serial_delimiter)
     await notify_approved(
         settings,
         serial_request.discord_message_id,
@@ -223,7 +223,7 @@ async def assign_serial(
     await db.flush()
 
     settings = request.app.state.settings
-    serial_display = serial_request.printer_type.format_serial(serial_number, settings.serial_pad_width)
+    serial_display = serial_request.printer_type.format_serial(serial_number, settings.serial_pad_width, settings.serial_delimiter)
     await notify_approved(
         settings,
         serial_request.discord_message_id,
@@ -809,7 +809,7 @@ async def import_reservations(
             reserved_by_id=current_user.id,
         ))
         imported.append({
-            "display": pt.format_serial(serial_number, request.app.state.settings.serial_pad_width),
+            "display": pt.format_serial(serial_number, request.app.state.settings.serial_pad_width, request.app.state.settings.serial_delimiter),
             "reason":  reason or "",
         })
 

@@ -1,0 +1,53 @@
+/*
+ * theme-name: Positron
+ * theme-id: positron
+ * theme-dot: #4a9eff
+ * theme-description: Dark tech theme inspired by Positron 3D
+ * theme-logo: /static/img/logo-positron.png
+ */
+
+body.theme-positron {
+  --bg:           #070a12;
+  --surface:      #0c1220;
+  --surface2:     #111828;
+  --border:       #1c2540;
+  --text:         #d8e0ff;
+  --text-muted:   #5868a0;
+  --accent:       #4a9eff;
+  --accent-hover: #3388ee;
+  --accent-dim:   rgba(74, 158, 255, 0.12);
+  --success:      #22c55e;
+  --danger:       #ef4444;
+  --warning:      #f59e0b;
+  --blue:         #60a5fa;
+  --blue-dim:     rgba(96, 165, 250, 0.15);
+}
+
+/* Navbar: subtle top accent line */
+body.theme-positron .navbar {
+  border-bottom: 1px solid var(--accent-dim);
+  box-shadow: 0 1px 24px rgba(74, 158, 255, 0.07);
+}
+
+/* Logo sizing — Positron logo is wider than tall */
+body.theme-positron .nav-logo {
+  height: 32px;
+}
+
+/* Accent glow on primary buttons */
+body.theme-positron .btn-primary {
+  box-shadow: 0 0 10px rgba(74, 158, 255, 0.25);
+}
+body.theme-positron .btn-primary:hover {
+  box-shadow: 0 0 18px rgba(74, 158, 255, 0.45);
+}
+
+/* Stat cards: blue left border accent */
+body.theme-positron .stat-card {
+  border-left: 3px solid var(--accent);
+}
+
+/* Serial type cards: matching accent strip */
+body.theme-positron .type-count-card {
+  border-top: 2px solid var(--accent);
+}

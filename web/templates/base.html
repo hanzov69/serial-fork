@@ -12,7 +12,8 @@
   <nav class="navbar">
     <div class="nav-brand">
       <a href="/">
-        <img src="/static/img/logo.png" alt="Serial Fork" class="nav-logo">
+        {% set _logo = request.app.state.theme_logo_map.get(request.app.state.site_theme) %}
+        <img src="{{ _logo or '/static/img/logo.png' }}" alt="Serial Fork" class="nav-logo">
         <span class="nav-brand-text">Serial Fork</span>
       </a>
     </div>

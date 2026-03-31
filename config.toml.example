@@ -17,9 +17,11 @@ web_port = 8000
 db_path = "/data/serial_fork.db"
 
 # Serial display
-# serial_prefix is no longer used — each printer type has its own identifier (BB, BBP, CC, etc.)
+# serial_prefix is no longer used — each printer type has its own identifier.
 # serial_pad_width controls minimum digit width (3 → BBP-001, auto-expands beyond 999)
+# serial_delimiter is the character between the type identifier and number (default "-" → BBP-001)
 serial_pad_width = 3
+# serial_delimiter = "-"
 
 # Bootstrap: auto-create the first Owner on startup (ignored once an owner exists).
 # Recommended: set INITIAL_OWNER_DISCORD_ID as an environment variable instead.

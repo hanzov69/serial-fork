@@ -21,6 +21,10 @@ def _pad(settings: Settings) -> int:
     return settings.serial_pad_width
 
 
+def _delim(settings: Settings) -> str:
+    return settings.serial_delimiter
+
+
 def request_received(request: SerialRequest, printer_type: PrinterType, settings: Settings) -> discord.Embed:
     embed = discord.Embed(
         title="Serial Request Received",
@@ -66,7 +70,7 @@ def request_pending_review(
 
 
 def serial_issued(serial: Serial, settings: Settings) -> discord.Embed:
-    display = serial.display(_pad(settings))
+    display = serial.display(_pad(settings), _delim(settings))
     embed = discord.Embed(
         title=f"Serial Issued: {display}",
         description=(
@@ -103,7 +107,7 @@ def request_rejected(
 
 
 def serial_lookup(serial: Serial, settings: Settings) -> discord.Embed:
-    display = serial.display(_pad(settings))
+    display = serial.display(_pad(settings), _delim(settings))
     color = discord.Color.green() if serial.is_active else discord.Color.dark_grey()
     embed = discord.Embed(title=f"Serial Lookup: {display}", color=color)
     embed.add_field(name="Serial Number", value=f"`{display}`", inline=True)

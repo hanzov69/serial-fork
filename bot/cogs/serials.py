@@ -602,7 +602,7 @@ async def _do_approve(
         )
         serial = result.scalar_one()
 
-    display = serial.display(settings.serial_pad_width)
+    display = serial.display(settings.serial_pad_width, settings.serial_delimiter)
     embed = serial_issued(serial, settings)
     await interaction.followup.send(
         f"Approved! Serial **{display}** issued.", ephemeral=True

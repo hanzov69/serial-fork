@@ -28,6 +28,7 @@ def _discover_themes(themes_dir: str) -> list[dict]:
         theme-id:   css-class-id
         theme-dot:  #hexcolor  (or a CSS gradient string for the picker dot)
         theme-description: Optional description
+        theme-logo: /static/img/my-logo.png  (optional; overrides the default logo)
 
     Returns a list of dicts sorted by theme-name, with babybelt always first.
     """
@@ -47,6 +48,7 @@ def _discover_themes(themes_dir: str) -> list[dict]:
         tid     = re.search(r"\*\s*theme-id:\s*(.+)", header)
         dot     = re.search(r"\*\s*theme-dot:\s*(.+)", header)
         desc    = re.search(r"\*\s*theme-description:\s*(.+)", header)
+        logo    = re.search(r"\*\s*theme-logo:\s*(.+)", header)
         if not (name and tid):
             continue
         themes.append({
@@ -54,6 +56,7 @@ def _discover_themes(themes_dir: str) -> list[dict]:
             "name":        name.group(1).strip(),
             "dot":         dot.group(1).strip() if dot else "#888888",
             "description": desc.group(1).strip() if desc else "",
+            "logo":        logo.group(1).strip() if logo else None,
             "file":        filename,
         })
     # babybelt always first, rest alphabetical
@@ -106,6 +109,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Discover installed themes from the filesystem
     themes_dir = os.path.join(os.path.dirname(__file__), "static", "css", "themes")
     app.state.themes = _discover_themes(themes_dir)
+    app.state.theme_logo_map = {t["id"]: t["logo"] for t in app.state.themes if t["logo"]}
     app.state.site_theme = "babybelt"  # default until DB is read
 
     @app.on_event("startup")

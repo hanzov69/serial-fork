@@ -115,10 +115,10 @@ class PrinterType(Base):
     created_by: Mapped["User | None"] = relationship("User", foreign_keys=[created_by_id])
     serials: Mapped[list["Serial"]] = relationship("Serial", back_populates="printer_type")
 
-    def format_serial(self, serial_number: int, pad_width: int = 3) -> str:
+    def format_serial(self, serial_number: int, pad_width: int = 3, delimiter: str = "-") -> str:
         """Return display string like 'BBP-012'."""
         width = max(pad_width, len(str(serial_number)))
-        return f"{self.identifier}-{serial_number:0{width}d}"
+        return f"{self.identifier}{delimiter}{serial_number:0{width}d}"
 
 
 class SerialRequest(Base):
@@ -183,9 +183,9 @@ class Serial(Base):
     def is_active(self) -> bool:
         return self.rescinded_at is None
 
-    def display(self, pad_width: int = 3) -> str:
+    def display(self, pad_width: int = 3, delimiter: str = "-") -> str:
         """Return formatted serial string, e.g. 'BBP-012'."""
-        return self.printer_type.format_serial(self.serial_number, pad_width)
+        return self.printer_type.format_serial(self.serial_number, pad_width, delimiter)
 
 
 class SerialReservation(Base):

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any, Tuple, Type
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -70,6 +70,22 @@ class Settings(BaseSettings):
         default=3,
         description="Minimum digit width for serial numbers (3 → BBP-001; auto-expands beyond 999)",
     )
+    serial_delimiter: str = Field(
+        default="-",
+        description="Single ASCII punctuation character between the type identifier and serial number (e.g. '-' → BBP-001)",
+    )
+
+    @field_validator("serial_delimiter")
+    @classmethod
+    def _validate_serial_delimiter(cls, v: str) -> str:
+        if len(v) != 1:
+            raise ValueError("serial_delimiter must be exactly one character")
+        c = ord(v)
+        if c < 0x21 or c > 0x7E:
+            raise ValueError("serial_delimiter must be a printable ASCII character (not a space)")
+        if v.isalnum():
+            raise ValueError("serial_delimiter must not be alphanumeric")
+        return v
 
     # --- Bootstrap owner ---
     # Set once on first deploy; ignored after an owner exists in the DB.
