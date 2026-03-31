@@ -18,7 +18,7 @@ from sqlalchemy.orm import selectinload
 
 from bot.utils.checks import is_admin
 from bot.cogs.serials import _channel_id, _printer_type_autocomplete
-from shared.database import get_session, is_serial_number_free, next_serial_number
+from shared.database import get_serial_delimiter, get_session, is_serial_number_free, next_serial_number
 from shared.models import (
     AuditLog,
     PrinterType,
@@ -392,6 +392,7 @@ class AdminCog(commands.Cog, name="Admin"):
             printer_type = request.printer_type
             requester = request.requester
 
+        self.settings.serial_delimiter = await get_serial_delimiter(self.settings.serial_delimiter)
         display = printer_type.format_serial(serial_number, self.settings.serial_pad_width, self.settings.serial_delimiter)
         await interaction.followup.send(
             f"Assigned **{display}** to request `#{request_id}`.", ephemeral=True

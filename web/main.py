@@ -128,12 +128,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         valid_ids = {t["id"] for t in app.state.themes}
         if theme in valid_ids:
             app.state.site_theme = theme
-        if delimiter is not None:
-            try:
-                Settings._validate_serial_delimiter(delimiter)
-                app.state.settings.serial_delimiter = delimiter
-            except (ValueError, Exception):
-                pass  # keep the config.toml default
+        if delimiter and len(delimiter) == 1 and 0x21 <= ord(delimiter) <= 0x7E and not delimiter.isalnum():
+            app.state.settings.serial_delimiter = delimiter
 
     return app
 

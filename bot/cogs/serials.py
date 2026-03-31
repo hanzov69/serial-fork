@@ -24,7 +24,7 @@ from bot.utils.embeds import (
     serial_issued,
     serial_lookup,
 )
-from shared.database import get_config, get_session, next_serial_number
+from shared.database import get_config, get_serial_delimiter, get_session, next_serial_number
 from shared.models import (
     AuditLog,
     PrinterType,
@@ -538,6 +538,7 @@ async def _do_approve(
     interaction: discord.Interaction, request_id: int, bot: commands.Bot
 ) -> None:
     settings = bot.settings
+    settings.serial_delimiter = await get_serial_delimiter(settings.serial_delimiter)
     moderator = await _get_or_create_user(interaction.user)
 
     async with get_session() as session:

@@ -75,12 +75,8 @@ async def main() -> None:
     # Load any runtime overrides stored in the database
     async with get_session() as session:
         db_delimiter = await get_config(session, "serial_delimiter")
-    if db_delimiter is not None:
-        try:
-            Settings._validate_serial_delimiter(db_delimiter)
-            settings.serial_delimiter = db_delimiter
-        except (ValueError, Exception):
-            pass  # keep the config.toml default
+    if db_delimiter and len(db_delimiter) == 1 and 0x21 <= ord(db_delimiter) <= 0x7E and not db_delimiter.isalnum():
+        settings.serial_delimiter = db_delimiter
 
     # Auto-create owner if configured and not yet present
     if settings.initial_owner_discord_id:

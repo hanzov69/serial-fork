@@ -160,6 +160,15 @@ async def set_config(session: AsyncSession, key: str, value: str | None) -> None
         row.value = value
 
 
+async def get_serial_delimiter(fallback: str = "-") -> str:
+    """Read the current serial delimiter from the DB, falling back to *fallback*."""
+    async with get_session() as session:
+        val = await get_config(session, "serial_delimiter")
+    if val and len(val) == 1 and 0x21 <= ord(val) <= 0x7E and not val.isalnum():
+        return val
+    return fallback
+
+
 @asynccontextmanager
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Context manager yielding a database session."""
