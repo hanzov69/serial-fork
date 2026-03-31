@@ -244,6 +244,7 @@ This moves the Owner role to the target user. There can only be one owner at a t
 | `/request` | Submit a serial number request. Must be run inside your own forum post thread. The bot detects your printer type from the thread's tag automatically. |
 | `/resubmit request_id:<id>` | Re-submit a rejected request from your forum post thread. Updates the post URL if you have changed threads. |
 | `/lookup printer_type:<type> serial_number:<n>` | Look up any issued serial number by type and number. Responds publicly. |
+| `/serialfork` | Show Serial Fork version, total serials issued (with per-type breakdown), and links to the GitHub repo and project page. |
 
 ### Moderator commands
 

@@ -1,5 +1,5 @@
 """
-Core serial number commands: /request, /approve, /reject, /lookup, /queue
+Core serial number commands: /request, /approve, /reject, /lookup, /queue, /serialfork
 """
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 import discord
 from discord import app_commands
 from discord.ext import commands
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from bot.utils.checks import is_moderator
@@ -32,6 +32,7 @@ from shared.models import (
     SerialRequest,
     User,
 )
+from shared.version import VERSION
 
 log = logging.getLogger(__name__)
 
@@ -474,6 +475,53 @@ class SerialsCog(commands.Cog, name="Serials"):
 
         embed = queue_embed(requests, self.settings)
         await interaction.followup.send(embed=embed, ephemeral=True)
+
+    # ------------------------------------------------------------------
+    # /serialfork
+    # ------------------------------------------------------------------
+
+    @app_commands.command(name="serialfork", description="Show Serial Fork version, stats, and links")
+    async def cmd_serialfork(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer()
+
+        async with get_session() as session:
+            total_issued = await session.scalar(
+                select(func.count(Serial.id)).where(Serial.rescinded_at.is_(None))
+            )
+
+            type_rows = await session.execute(
+                select(PrinterType, func.count(Serial.id).label("cnt"))
+                .outerjoin(
+                    Serial,
+                    (Serial.printer_type_id == PrinterType.id) & Serial.rescinded_at.is_(None),
+                )
+                .where(PrinterType.is_active == True)
+                .group_by(PrinterType.id)
+                .order_by(PrinterType.identifier)
+            )
+            type_counts = type_rows.all()
+
+        embed = discord.Embed(
+            title="Serial Fork",
+            description=(
+                "Serial number registry for verified maker builds.\n\n"
+                "🔗 [GitHub](https://github.com/hanzov69/serial-fork)  ·  "
+                "[Project Page](https://forkweld.com/projects/serial-fork)"
+            ),
+            color=discord.Color.from_str("#f5c800"),
+        )
+        embed.add_field(name="Version", value=f"`{VERSION}`", inline=True)
+        embed.add_field(name="Serials Issued", value=str(total_issued or 0), inline=True)
+
+        if type_counts:
+            breakdown = "\n".join(
+                f"`{pt.identifier}` — {count}"
+                for pt, count in type_counts
+            )
+            embed.add_field(name="By Type", value=breakdown, inline=False)
+
+        embed.set_footer(text="Serial Fork • forkweld.com/projects/serial-fork")
+        await interaction.followup.send(embed=embed)
 
 
 # ------------------------------------------------------------------
