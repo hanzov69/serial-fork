@@ -464,6 +464,7 @@ async def config_page(
             "current_user": current_user,
             "forum_channel_id": await get_config(db, "discord_forum_channel_id") or str(settings.discord_forum_channel_id),
             "mod_notify_channel_id": await get_config(db, "discord_mod_notify_channel_id") or str(settings.discord_mod_notify_channel_id),
+            "serial_delimiter": settings.serial_delimiter,
         },
     )
 
@@ -485,6 +486,25 @@ async def save_theme_config(
         raise HTTPException(status_code=400, detail=f"Unknown theme '{theme}'")
     await set_config(db, "site_theme", theme)
     request.app.state.site_theme = theme
+    return RedirectResponse("/admin/config", status_code=303)
+
+
+@router.post("/config/delimiter")
+async def save_delimiter_config(
+    serial_delimiter: str = Form(...),
+    request: Request = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_owner),
+):
+    if len(serial_delimiter) != 1:
+        raise HTTPException(status_code=400, detail="Delimiter must be exactly one character")
+    c = ord(serial_delimiter)
+    if c < 0x21 or c > 0x7E:
+        raise HTTPException(status_code=400, detail="Delimiter must be a printable ASCII character (not a space)")
+    if serial_delimiter.isalnum():
+        raise HTTPException(status_code=400, detail="Delimiter must not be alphanumeric")
+    await set_config(db, "serial_delimiter", serial_delimiter)
+    request.app.state.settings.serial_delimiter = serial_delimiter
     return RedirectResponse("/admin/config", status_code=303)
 
 

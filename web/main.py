@@ -124,9 +124,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         from shared.database import get_config, get_session
         async with get_session() as session:
             theme = await get_config(session, "site_theme")
+            delimiter = await get_config(session, "serial_delimiter")
         valid_ids = {t["id"] for t in app.state.themes}
         if theme in valid_ids:
             app.state.site_theme = theme
+        if delimiter is not None:
+            try:
+                Settings._validate_serial_delimiter(delimiter)
+                app.state.settings.serial_delimiter = delimiter
+            except (ValueError, Exception):
+                pass  # keep the config.toml default
 
     return app
 

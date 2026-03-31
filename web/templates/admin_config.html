@@ -31,6 +31,25 @@
     Add a CSS file to <code>web/static/css/themes/</code> to create a custom theme.
   </span>
 </form>
+
+<!-- ── Serial Delimiter ───────────────────────────────────────────── -->
+<h2 style="font-size:1rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:0.75rem">
+  Serial Delimiter
+</h2>
+<form method="post" action="/admin/config/delimiter" style="margin-bottom:2.5rem; display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap">
+  <input type="text" name="serial_delimiter"
+         value="{{ serial_delimiter }}"
+         maxlength="1"
+         required
+         pattern="[!-/:-@\[-`{-~]"
+         title="One printable ASCII punctuation character (e.g. - . _ |)"
+         style="width:3rem; text-align:center; font-size:1rem; font-family:monospace; padding:0.35rem 0.5rem">
+  <button type="submit" class="btn btn-sm btn-primary">Save</button>
+  <span class="muted" style="font-size:0.8rem">
+    Character between type identifier and number — e.g. <code>BBP{{ serial_delimiter }}001</code>.
+    Must be a single ASCII punctuation character.
+  </span>
+</form>
 {% endif %}
 
 <!-- ── Discord Channel Settings ─────────────────────────────────────── -->
