@@ -86,8 +86,10 @@ jobs:
           cache-to: type=inline
 
       # GITHUB_TOKEN cannot change package visibility — a classic PAT is required.
-      # Create one with write:packages scope at https://github.com/settings/tokens
-      # and store it as a repository secret named PACKAGES_TOKEN.
+      # Packages pushed via GITHUB_TOKEN are repository-linked; modifying them
+      # requires BOTH write:packages AND repo scopes on the PAT.
+      # Create one at https://github.com/settings/tokens (classic) with those two
+      # scopes and store it as a repository secret named PACKAGES_TOKEN.
       # The check-token step safely detects whether the secret is set without
       # exposing its value, and the make-public step is skipped if it is absent.
       - name: Check for PACKAGES_TOKEN
