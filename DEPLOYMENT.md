@@ -89,7 +89,7 @@ You need three channel/server IDs. To get them:
 
 1. In Discord, go to **Settings → Advanced** and enable **Developer Mode**
 2. Right-click your server name → **Copy Server ID** — this is `discord_guild_id`
-3. Right-click the channel where users will post requests → **Copy Channel ID** — this is `discord_request_channel_id`
+3. Right-click the forum channel where users post their builds → **Copy Channel ID** — this is `discord_forum_channel_id`
 4. Right-click the channel where moderators will receive notifications → **Copy Channel ID** — this is `discord_mod_notify_channel_id`
 
 > **Tip:** You can use the same channel for both requests and mod notifications, or separate channels — whichever fits your server layout.
