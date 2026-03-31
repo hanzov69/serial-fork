@@ -479,3 +479,128 @@ a:hover { text-decoration: underline; }
 /* ── Empty states ──────────────────────────────────────── */
 .empty-state       { color: var(--text-muted); padding: 2rem 0; }
 .empty-state-large { text-align: center; padding: 4rem 0; color: var(--text-muted); font-size: 1.05rem; }
+
+/* ══════════════════════════════════════════════════════════
+   THEMES — override CSS custom properties on <body>
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Printcepts ─────────────────────────────────────────────
+   Inspired by Printcepts / the green BabyBelt Pro logo.
+   Dark professional base with an emerald-green accent.
+   ───────────────────────────────────────────────────────── */
+body.theme-printcepts {
+  --bg:       #040d06;
+  --surface:  #0b1a0f;
+  --surface2: #122018;
+  --border:   #1e3a28;
+
+  --text:       #e4f5ea;
+  --text-muted: #6b9b7a;
+
+  --accent:       #22c55e;
+  --accent-hover: #16a34a;
+  --accent-dim:   rgba(34, 197, 94, 0.12);
+
+  --success: #4ade80;
+  --danger:  #f04747;
+  --warning: #fb923c;
+
+  --blue:     #0ea5e9;
+  --blue-dim: rgba(14, 165, 233, 0.15);
+}
+
+/* ── Wave ───────────────────────────────────────────────────
+   80s vaporwave / synthwave aesthetic.
+   Deep purple night, neon magenta, electric cyan.
+   ───────────────────────────────────────────────────────── */
+body.theme-wave {
+  --bg:       #0d001a;
+  --surface:  #17002e;
+  --surface2: #22004a;
+  --border:   #4a007a;
+
+  --text:       #f0e0ff;
+  --text-muted: #b085d0;
+
+  --accent:       #ff2d78;
+  --accent-hover: #e0005f;
+  --accent-dim:   rgba(255, 45, 120, 0.15);
+
+  --success: #00f5c4;
+  --danger:  #ff4466;
+  --warning: #ffaa00;
+
+  --blue:     #00e5ff;
+  --blue-dim: rgba(0, 229, 255, 0.15);
+}
+
+/* Grid background — the floor perspective grid of vaporwave */
+body.theme-wave {
+  background-image:
+    linear-gradient(rgba(0, 229, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 229, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  background-attachment: fixed;
+}
+
+/* Gradient accent bar on the navbar */
+body.theme-wave .navbar {
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(90deg, var(--accent), var(--blue)) 1;
+}
+
+/* Neon glow on key text */
+body.theme-wave .nav-brand-text,
+body.theme-wave .stat-number,
+body.theme-wave .serial-card-number,
+body.theme-wave .serial-number,
+body.theme-wave .type-count-id {
+  text-shadow: 0 0 12px currentColor;
+}
+
+/* Glow on primary button */
+body.theme-wave .btn-primary {
+  box-shadow: 0 0 14px rgba(255, 45, 120, 0.5);
+}
+body.theme-wave .btn-primary:hover {
+  box-shadow: 0 0 22px rgba(255, 45, 120, 0.7);
+}
+
+/* Accent top-bar glow on stat and serial cards */
+body.theme-wave .stat-card::before,
+body.theme-wave .type-count-card::after {
+  background: linear-gradient(90deg, var(--accent), var(--blue));
+}
+
+/* Theme selector widget */
+.theme-picker {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.theme-swatch {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.theme-swatch:hover { border-color: var(--accent); color: var(--text); }
+.theme-swatch input[type="radio"] { display: none; }
+.theme-swatch.active {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--accent-dim);
+}
+.theme-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}

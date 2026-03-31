@@ -60,9 +60,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(admin.router)
     app.include_router(user.router)
 
+    app.state.site_theme = "babybelt"  # default until DB is read
+
     @app.on_event("startup")
     async def startup():
-        import asyncio
         init_engine(settings.db_path)
         _run_migrations(settings.db_path)
         if settings.initial_owner_discord_id:
@@ -70,6 +71,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 settings.initial_owner_discord_id,
                 settings.initial_owner_username,
             )
+        from shared.database import get_config, get_session
+        async with get_session() as session:
+            theme = await get_config(session, "site_theme")
+        if theme in ("babybelt", "printcepts", "wave"):
+            app.state.site_theme = theme
 
     return app
 
