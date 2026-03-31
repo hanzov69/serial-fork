@@ -85,11 +85,22 @@ jobs:
           cache-from: type=registry,ref=${{ env.IMAGE }}:latest
           cache-to: type=inline
 
+      # GITHUB_TOKEN cannot change package visibility — a PAT is required.
+      # Create a classic PAT with write:packages scope at https://github.com/settings/tokens
+      # and store it as a repository secret named PACKAGES_TOKEN.
+      # This step is skipped if the secret is not set.
       - name: Make package public
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && secrets.PACKAGES_TOKEN != ''
         uses: actions/github-script@v7
+        env:
+          PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
         with:
+          github-token: ${{ secrets.PACKAGES_TOKEN }}
           script: |
+            if (!process.env.PACKAGES_TOKEN) {
+              core.notice('PACKAGES_TOKEN secret not set — skipping visibility change');
+              return;
+            }
             const owner = context.repo.owner;
             const packageName = '${{ matrix.image }}';
             const { data: ownerData } = await github.rest.users.getByUsername({ username: owner });
