@@ -73,7 +73,7 @@
       <tbody>
         {% for r in reservations %}
         <tr>
-          <td class="mono">{{ r.printer_type.format_serial(r.serial_number, settings.serial_pad_width) }}</td>
+          <td class="mono">{{ r.printer_type.format_serial(r.serial_number, settings.serial_pad_width, settings.serial_delimiter) }}</td>
           <td>{{ r.reason or '—' }}</td>
           <td>
             <div class="user-info">
@@ -84,7 +84,7 @@
           <td>{{ r.created_at.strftime('%Y-%m-%d') }}</td>
           <td>
             <form method="post" action="/admin/reservations/{{ r.id }}/delete"
-                  onsubmit="return confirm('Remove reservation for {{ r.printer_type.format_serial(r.serial_number, settings.serial_pad_width) }}?')">
+                  onsubmit="return confirm('Remove reservation for {{ r.printer_type.format_serial(r.serial_number, settings.serial_pad_width, settings.serial_delimiter) }}?')">
               <button type="submit" class="btn btn-sm btn-danger">Remove</button>
             </form>
           </td>

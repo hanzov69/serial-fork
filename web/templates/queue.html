@@ -3,7 +3,7 @@
 {% block title %}Review Queue — Registry{% endblock %}
 
 {% block content %}
-<div class="page-header">
+<div class="page-header" data-serial-delimiter="{{ settings.serial_delimiter }}">
   <h1>Serial Request Queue</h1>
   <span class="badge">{{ pending_requests|length }} pending</span>
 </div>
@@ -48,7 +48,7 @@
         <form method="post" action="/admin/assign/{{ req.id }}"
               style="display:inline-flex; align-items:center; gap:0.4rem"
               onsubmit="return validateAssign(this, '{{ req.printer_type.identifier }}')">
-          <span class="mono muted" style="font-size:0.8rem">{{ req.printer_type.identifier }}-</span>
+          <span class="mono muted" style="font-size:0.8rem">{{ req.printer_type.identifier }}{{ settings.serial_delimiter }}</span>
           <input type="number" name="serial_number" min="1" placeholder="###"
                  class="input-sm" style="width:80px">
           <button type="submit" class="btn btn-sm" title="Assign this specific number">Assign #</button>
@@ -122,7 +122,8 @@ function validateAssign(form, identifier) {
     alert('Please enter a valid serial number.');
     return false;
   }
-  return confirm('Assign ' + identifier + '-' + String(val).padStart(3, '0') + ' to this request?');
+  const delim = document.querySelector('[data-serial-delimiter]')?.dataset.serialDelimiter ?? '-';
+  return confirm('Assign ' + identifier + delim + String(val).padStart(3, '0') + ' to this request?');
 }
 </script>
 {% endblock %}

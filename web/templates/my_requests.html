@@ -35,7 +35,7 @@
 
         {% if req.status == 'approved' and req.serial %}
           <p class="serial-issued-notice">
-            Issued: <strong>{{ req.serial.printer_type.format_serial(req.serial.serial_number, settings.serial_pad_width) }}</strong>
+            Issued: <strong>{{ req.serial.printer_type.format_serial(req.serial.serial_number, settings.serial_pad_width, settings.serial_delimiter) }}</strong>
             — <a href="/serial/{{ req.printer_type.identifier }}/{{ req.serial.serial_number }}">View serial</a>
           </p>
         {% endif %}

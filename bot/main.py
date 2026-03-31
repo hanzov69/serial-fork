@@ -14,7 +14,7 @@ from discord.ext import commands
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from shared.config import Settings
-from shared.database import bootstrap_owner, init_engine
+from shared.database import bootstrap_owner, get_config, get_session, init_engine
 
 log = logging.getLogger(__name__)
 
@@ -71,6 +71,16 @@ async def main() -> None:
 
     # Run Alembic migrations before starting
     _run_migrations(settings.db_path)
+
+    # Load any runtime overrides stored in the database
+    async with get_session() as session:
+        db_delimiter = await get_config(session, "serial_delimiter")
+    if db_delimiter is not None:
+        try:
+            Settings._validate_serial_delimiter(db_delimiter)
+            settings.serial_delimiter = db_delimiter
+        except (ValueError, Exception):
+            pass  # keep the config.toml default
 
     # Auto-create owner if configured and not yet present
     if settings.initial_owner_discord_id:

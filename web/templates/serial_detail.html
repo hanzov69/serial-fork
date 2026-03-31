@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% set display = serial.display(settings.serial_pad_width) %}
+{% set display = serial.display(settings.serial_pad_width, settings.serial_delimiter) %}
 
 {% block title %}{{ display }} — Serial Registry{% endblock %}
 

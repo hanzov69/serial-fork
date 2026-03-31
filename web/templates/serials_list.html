@@ -35,7 +35,7 @@
       <tr class="{{ 'rescinded' if not serial.is_active }}">
         <td>
           <a href="/serial/{{ serial.printer_type.identifier }}/{{ serial.serial_number }}" class="mono">
-            {{ serial.display(settings.serial_pad_width) }}
+            {{ serial.display(settings.serial_pad_width, settings.serial_delimiter) }}
           </a>
         </td>
         <td>{{ serial.printer_type.name }}</td>
