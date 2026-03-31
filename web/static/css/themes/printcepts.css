@@ -1,0 +1,27 @@
+/*
+ * theme-name: Printcepts
+ * theme-id: printcepts
+ * theme-dot: #22c55e
+ * theme-description: Dark professional theme inspired by the Printcepts green logo
+ */
+
+body.theme-printcepts {
+  --bg:       #040d06;
+  --surface:  #0b1a0f;
+  --surface2: #122018;
+  --border:   #1e3a28;
+
+  --text:       #e4f5ea;
+  --text-muted: #6b9b7a;
+
+  --accent:       #22c55e;
+  --accent-hover: #16a34a;
+  --accent-dim:   rgba(34, 197, 94, 0.12);
+
+  --success: #4ade80;
+  --danger:  #f04747;
+  --warning: #fb923c;
+
+  --blue:     #0ea5e9;
+  --blue-dim: rgba(14, 165, 233, 0.15);
+}

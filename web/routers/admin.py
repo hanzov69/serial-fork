@@ -472,9 +472,6 @@ async def printers_redirect(request: Request):
     return RedirectResponse("/admin/config", status_code=301)
 
 
-_VALID_THEMES = {"babybelt", "printcepts", "wave"}
-
-
 @router.post("/config/theme")
 async def save_theme_config(
     theme: str = Form(...),
@@ -482,7 +479,8 @@ async def save_theme_config(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_owner),
 ):
-    if theme not in _VALID_THEMES:
+    valid_ids = {t["id"] for t in request.app.state.themes}
+    if theme not in valid_ids:
         raise HTTPException(status_code=400, detail=f"Unknown theme '{theme}'")
     await set_config(db, "site_theme", theme)
     request.app.state.site_theme = theme

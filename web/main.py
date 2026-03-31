@@ -4,6 +4,7 @@ FastAPI web application factory.
 from __future__ import annotations
 
 import os
+import re
 import sys
 
 from fastapi import FastAPI
@@ -16,6 +17,48 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from shared.config import Settings
 from shared.database import bootstrap_owner, init_engine
 from web.routers import auth, serials, admin, user
+
+
+def _discover_themes(themes_dir: str) -> list[dict]:
+    """
+    Scan the themes directory for CSS files and parse their metadata comments.
+
+    Each theme file should contain a comment block near the top with:
+        theme-name: Display Name
+        theme-id:   css-class-id
+        theme-dot:  #hexcolor  (or a CSS gradient string for the picker dot)
+        theme-description: Optional description
+
+    Returns a list of dicts sorted by theme-name, with babybelt always first.
+    """
+    themes = []
+    if not os.path.isdir(themes_dir):
+        return themes
+    for filename in sorted(os.listdir(themes_dir)):
+        if not filename.endswith(".css"):
+            continue
+        path = os.path.join(themes_dir, filename)
+        try:
+            with open(path, encoding="utf-8") as f:
+                header = f.read(512)  # only parse the top of the file
+        except OSError:
+            continue
+        name    = re.search(r"\*\s*theme-name:\s*(.+)", header)
+        tid     = re.search(r"\*\s*theme-id:\s*(.+)", header)
+        dot     = re.search(r"\*\s*theme-dot:\s*(.+)", header)
+        desc    = re.search(r"\*\s*theme-description:\s*(.+)", header)
+        if not (name and tid):
+            continue
+        themes.append({
+            "id":          tid.group(1).strip(),
+            "name":        name.group(1).strip(),
+            "dot":         dot.group(1).strip() if dot else "#888888",
+            "description": desc.group(1).strip() if desc else "",
+            "file":        filename,
+        })
+    # babybelt always first, rest alphabetical
+    themes.sort(key=lambda t: (0 if t["id"] == "babybelt" else 1, t["name"]))
+    return themes
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -60,6 +103,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(admin.router)
     app.include_router(user.router)
 
+    # Discover installed themes from the filesystem
+    themes_dir = os.path.join(os.path.dirname(__file__), "static", "css", "themes")
+    app.state.themes = _discover_themes(themes_dir)
     app.state.site_theme = "babybelt"  # default until DB is read
 
     @app.on_event("startup")
@@ -74,7 +120,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         from shared.database import get_config, get_session
         async with get_session() as session:
             theme = await get_config(session, "site_theme")
-        if theme in ("babybelt", "printcepts", "wave"):
+        valid_ids = {t["id"] for t in app.state.themes}
+        if theme in valid_ids:
             app.state.site_theme = theme
 
     return app

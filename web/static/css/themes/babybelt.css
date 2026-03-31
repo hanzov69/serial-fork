@@ -1,0 +1,30 @@
+/*
+ * theme-name: BabyBelt
+ * theme-id: babybelt
+ * theme-dot: #f5c800
+ * theme-description: Deep navy and gold, inspired by the BabyBelt logo
+ */
+
+/* BabyBelt is the default — variables are defined in main.css :root.
+   This file exists so the theme is discoverable and can be explicitly
+   selected. body.theme-babybelt simply restores the defaults. */
+body.theme-babybelt {
+  --bg:       #080c18;
+  --surface:  #0e1525;
+  --surface2: #172035;
+  --border:   #243050;
+
+  --text:       #eef2ff;
+  --text-muted: #7b90b8;
+
+  --accent:       #f5c800;
+  --accent-hover: #ddb400;
+  --accent-dim:   rgba(245, 200, 0, 0.12);
+
+  --success: #3dc97a;
+  --danger:  #f04747;
+  --warning: #e07830;
+
+  --blue:     #2465b5;
+  --blue-dim: rgba(36, 101, 181, 0.18);
+}

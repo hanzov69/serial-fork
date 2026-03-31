@@ -20,26 +20,16 @@
 <h2 style="font-size:1rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:0.75rem">
   Site Theme
 </h2>
-<form method="post" action="/admin/config/theme" style="margin-bottom:2.5rem">
-  <div class="theme-picker" id="themePicker">
-    {% set current_theme = request.app.state.site_theme %}
-    <label class="theme-swatch {% if current_theme == 'babybelt' %}active{% endif %}">
-      <input type="radio" name="theme" value="babybelt" {% if current_theme == 'babybelt' %}checked{% endif %}>
-      <span class="theme-dot" style="background:#f5c800"></span>
-      BabyBelt
-    </label>
-    <label class="theme-swatch {% if current_theme == 'printcepts' %}active{% endif %}">
-      <input type="radio" name="theme" value="printcepts" {% if current_theme == 'printcepts' %}checked{% endif %}>
-      <span class="theme-dot" style="background:#22c55e"></span>
-      Printcepts
-    </label>
-    <label class="theme-swatch {% if current_theme == 'wave' %}active{% endif %}">
-      <input type="radio" name="theme" value="wave" {% if current_theme == 'wave' %}checked{% endif %}>
-      <span class="theme-dot" style="background:linear-gradient(135deg,#ff2d78,#00e5ff)"></span>
-      Wave
-    </label>
-  </div>
-  <button type="submit" class="btn btn-sm btn-primary" style="margin-top:0.75rem">Apply Theme</button>
+<form method="post" action="/admin/config/theme" style="margin-bottom:2.5rem; display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap">
+  <select name="theme" class="select-sm" style="font-size:0.875rem; padding:0.4rem 0.6rem">
+    {% for t in request.app.state.themes %}
+    <option value="{{ t.id }}" {% if t.id == request.app.state.site_theme %}selected{% endif %}>{{ t.name }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-sm btn-primary">Apply Theme</button>
+  <span class="muted" style="font-size:0.8rem">
+    Add a CSS file to <code>web/static/css/themes/</code> to create a custom theme.
+  </span>
 </form>
 {% endif %}
 

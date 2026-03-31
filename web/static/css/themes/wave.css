@@ -1,0 +1,65 @@
+/*
+ * theme-name: Wave
+ * theme-id: wave
+ * theme-dot: linear-gradient(135deg,#ff2d78,#00e5ff)
+ * theme-description: 80s vaporwave — deep purple, neon pink and electric cyan
+ */
+
+body.theme-wave {
+  --bg:       #0d001a;
+  --surface:  #17002e;
+  --surface2: #22004a;
+  --border:   #4a007a;
+
+  --text:       #f0e0ff;
+  --text-muted: #b085d0;
+
+  --accent:       #ff2d78;
+  --accent-hover: #e0005f;
+  --accent-dim:   rgba(255, 45, 120, 0.15);
+
+  --success: #00f5c4;
+  --danger:  #ff4466;
+  --warning: #ffaa00;
+
+  --blue:     #00e5ff;
+  --blue-dim: rgba(0, 229, 255, 0.15);
+}
+
+/* Perspective grid background */
+body.theme-wave {
+  background-image:
+    linear-gradient(rgba(0, 229, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 229, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  background-attachment: fixed;
+}
+
+/* Gradient accent bar on the navbar */
+body.theme-wave .navbar {
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(90deg, var(--accent), var(--blue)) 1;
+}
+
+/* Neon glow on key text */
+body.theme-wave .nav-brand-text,
+body.theme-wave .stat-number,
+body.theme-wave .serial-card-number,
+body.theme-wave .serial-number,
+body.theme-wave .type-count-id {
+  text-shadow: 0 0 12px currentColor;
+}
+
+/* Glow on primary button */
+body.theme-wave .btn-primary {
+  box-shadow: 0 0 14px rgba(255, 45, 120, 0.5);
+}
+body.theme-wave .btn-primary:hover {
+  box-shadow: 0 0 22px rgba(255, 45, 120, 0.7);
+}
+
+/* Gradient accent bar on stat and type-count cards */
+body.theme-wave .stat-card::before,
+body.theme-wave .type-count-card::after {
+  background: linear-gradient(90deg, var(--accent), var(--blue));
+}
