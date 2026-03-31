@@ -49,8 +49,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Read version from pyproject.toml
+        id: version
+        run: |
+          VERSION=$(grep '^version' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
       # Generates tags + OCI labels from git context:
-      #   push to main  → :latest
+      #   push to main  → :0.2.0, :latest
       #   push v1.2.3   → :1.2.3, :1.2, :latest
       #   pull request  → :pr-42  (build only, not pushed)
       - name: Extract metadata
@@ -61,6 +67,7 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=${{ steps.version.outputs.version }},enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=ref,event=pr
 
