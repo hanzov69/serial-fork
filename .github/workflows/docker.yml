@@ -84,3 +84,13 @@ jobs:
           # Falls back gracefully if no image exists yet (first build).
           cache-from: type=registry,ref=${{ env.IMAGE }}:latest
           cache-to: type=inline
+
+      - name: Make package public
+        if: github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.request('PATCH /user/packages/container/{package_name}', {
+              package_name: '${{ matrix.image }}',
+              visibility: 'public',
+            });
