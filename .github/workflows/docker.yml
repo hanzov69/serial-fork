@@ -101,17 +101,26 @@ jobs:
 
       - name: Make package public
         if: github.event_name != 'pull_request' && steps.check_token.outputs.has_token == 'true'
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
         run: |
           OWNER="${{ github.repository_owner }}"
           PACKAGE="${{ matrix.image }}"
-          OWNER_TYPE=$(gh api /users/$OWNER --jq '.type')
+          OWNER_TYPE=$(gh api "users/$OWNER" --jq '.type')
           echo "Owner: $OWNER  Type: $OWNER_TYPE  Package: $PACKAGE"
+
+          # Verify the token can see the package before attempting to update it
+          echo "--- Checking package exists and is accessible ---"
+          gh api "user/packages/container/$PACKAGE" --jq '{name: .name, visibility: .visibility}' \
+            && echo "--- Package found, updating visibility ---" \
+            || { echo "--- Package not found or token lacks access (GET failed) ---"; exit 1; }
+
           if [ "$OWNER_TYPE" = "Organization" ]; then
-            gh api --method PATCH /orgs/$OWNER/packages/container/$PACKAGE \
+            gh api --method PATCH "orgs/$OWNER/packages/container/$PACKAGE" \
               -f visibility=public
           else
-            gh api --method PATCH /user/packages/container/$PACKAGE \
+            gh api --method PATCH "user/packages/container/$PACKAGE" \
               -f visibility=public
           fi
+          echo "--- Visibility set to public ---"
