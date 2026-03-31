@@ -1,8 +1,8 @@
 """
-Admin commands: /addmod, /removemod, /rescind,
-                /reserve, /unreserve, /reservations,
-                /assign,
-                /addprinter, /printers
+Admin commands grouped under /serialadmin:
+  addmod, removemod, rescind,
+  reserve, unreserve, reservations,
+  assign, addprinter, printers
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from discord.ext import commands
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from bot.utils.checks import is_admin, is_owner
+from bot.utils.checks import is_admin
 from bot.cogs.serials import _channel_id, _printer_type_autocomplete
 from shared.database import get_session, is_serial_number_free, next_serial_number
 from shared.models import (
@@ -43,14 +43,19 @@ class AdminCog(commands.Cog, name="Admin"):
     def settings(self):
         return self.bot.settings
 
+    serialadmin = app_commands.Group(
+        name="serialadmin",
+        description="Serial Fork admin commands",
+    )
+
     # ------------------------------------------------------------------
-    # /addmod / /removemod
+    # /serialadmin addmod / removemod
     # ------------------------------------------------------------------
 
-    @app_commands.command(name="addmod", description="[Admin] Grant moderator role to a user")
+    @serialadmin.command(name="addmod", description="[Admin] Grant moderator role to a user")
     @app_commands.describe(member="The Discord member to promote")
     @is_admin()
-    async def cmd_addmod(self, interaction: discord.Interaction, member: discord.Member) -> None:
+    async def serialadmin_addmod(self, interaction: discord.Interaction, member: discord.Member) -> None:
         await interaction.response.defer(ephemeral=True)
         admin = await _get_or_create_user(interaction.user)
 
@@ -84,10 +89,10 @@ class AdminCog(commands.Cog, name="Admin"):
 
         await interaction.followup.send(f"{member.mention} has been granted **moderator** role.", ephemeral=True)
 
-    @app_commands.command(name="removemod", description="[Admin] Remove moderator role from a user")
+    @serialadmin.command(name="removemod", description="[Admin] Remove moderator role from a user")
     @app_commands.describe(member="The Discord member to demote")
     @is_admin()
-    async def cmd_removemod(self, interaction: discord.Interaction, member: discord.Member) -> None:
+    async def serialadmin_removemod(self, interaction: discord.Interaction, member: discord.Member) -> None:
         await interaction.response.defer(ephemeral=True)
         admin = await _get_or_create_user(interaction.user)
 
@@ -109,63 +114,10 @@ class AdminCog(commands.Cog, name="Admin"):
         await interaction.followup.send(f"{member.mention}'s moderator role has been removed.", ephemeral=True)
 
     # ------------------------------------------------------------------
-    # /transferownership
+    # /serialadmin rescind
     # ------------------------------------------------------------------
 
-    @app_commands.command(
-        name="transferownership",
-        description="[Owner] Transfer the Owner role to another admin, reducing yourself to admin",
-    )
-    @app_commands.describe(member="The admin to promote to Owner")
-    @is_owner()
-    async def cmd_transferownership(
-        self, interaction: discord.Interaction, member: discord.Member
-    ) -> None:
-        await interaction.response.defer(ephemeral=True)
-        current_owner = await _get_or_create_user(interaction.user)
-
-        if member.id == interaction.user.id:
-            await interaction.followup.send("You are already the Owner.", ephemeral=True)
-            return
-
-        async with get_session() as session:
-            result = await session.execute(
-                select(User).where(User.discord_id == str(member.id))
-            )
-            target = result.scalar_one_or_none()
-
-            if target is None or not target.is_admin:
-                await interaction.followup.send(
-                    f"{member.mention} must already be an admin to receive the Owner role.",
-                    ephemeral=True,
-                )
-                return
-
-            # Atomically swap roles
-            result_owner = await session.execute(
-                select(User).where(User.id == current_owner.id)
-            )
-            owner_row = result_owner.scalar_one()
-            owner_row.role = UserRole.admin
-            target.role = UserRole.owner
-
-            session.add(AuditLog(
-                actor_id=current_owner.id,
-                action="promote",
-                target_user_id=target.id,
-                details=f"ownership_transfer: {current_owner.username} → {target.username}",
-            ))
-
-        await interaction.followup.send(
-            f"Ownership transferred to {member.mention}. You are now an **admin**.",
-            ephemeral=True,
-        )
-
-    # ------------------------------------------------------------------
-    # /rescind
-    # ------------------------------------------------------------------
-
-    @app_commands.command(name="rescind", description="[Admin] Rescind an issued serial number")
+    @serialadmin.command(name="rescind", description="[Admin] Rescind an issued serial number")
     @app_commands.describe(
         printer_type="The printer type identifier (e.g. BBP, CC)",
         serial_number="The numeric part of the serial to rescind",
@@ -173,7 +125,7 @@ class AdminCog(commands.Cog, name="Admin"):
     )
     @app_commands.autocomplete(printer_type=_printer_type_autocomplete)
     @is_admin()
-    async def cmd_rescind(
+    async def serialadmin_rescind(
         self,
         interaction: discord.Interaction,
         printer_type: str,
@@ -215,10 +167,10 @@ class AdminCog(commands.Cog, name="Admin"):
         await interaction.followup.send(f"Serial **{display}** has been rescinded.", ephemeral=True)
 
     # ------------------------------------------------------------------
-    # /reserve / /unreserve / /reservations
+    # /serialadmin reserve / unreserve / reservations
     # ------------------------------------------------------------------
 
-    @app_commands.command(name="reserve", description="[Admin] Reserve a serial number so it won't be auto-assigned")
+    @serialadmin.command(name="reserve", description="[Admin] Reserve a serial number so it won't be auto-assigned")
     @app_commands.describe(
         printer_type="The printer type (e.g. BBP, CC)",
         serial_number="The serial number to reserve",
@@ -226,7 +178,7 @@ class AdminCog(commands.Cog, name="Admin"):
     )
     @app_commands.autocomplete(printer_type=_printer_type_autocomplete)
     @is_admin()
-    async def cmd_reserve(
+    async def serialadmin_reserve(
         self,
         interaction: discord.Interaction,
         printer_type: str,
@@ -276,14 +228,14 @@ class AdminCog(commands.Cog, name="Admin"):
             msg += f" Reason: {reason}"
         await interaction.followup.send(msg, ephemeral=True)
 
-    @app_commands.command(name="unreserve", description="[Admin] Release a reserved serial number back into rotation")
+    @serialadmin.command(name="unreserve", description="[Admin] Release a reserved serial number back into rotation")
     @app_commands.describe(
         printer_type="The printer type (e.g. BBP, CC)",
         serial_number="The serial number to unreserve",
     )
     @app_commands.autocomplete(printer_type=_printer_type_autocomplete)
     @is_admin()
-    async def cmd_unreserve(
+    async def serialadmin_unreserve(
         self,
         interaction: discord.Interaction,
         printer_type: str,
@@ -317,9 +269,9 @@ class AdminCog(commands.Cog, name="Admin"):
 
         await interaction.followup.send(f"Reservation for **{display}** removed.", ephemeral=True)
 
-    @app_commands.command(name="reservations", description="[Admin] List all reserved serial numbers")
+    @serialadmin.command(name="reservations", description="[Admin] List all reserved serial numbers")
     @is_admin()
-    async def cmd_reservations(self, interaction: discord.Interaction) -> None:
+    async def serialadmin_reservations(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True)
 
         async with get_session() as session:
@@ -356,10 +308,10 @@ class AdminCog(commands.Cog, name="Admin"):
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     # ------------------------------------------------------------------
-    # /assign
+    # /serialadmin assign
     # ------------------------------------------------------------------
 
-    @app_commands.command(
+    @serialadmin.command(
         name="assign",
         description="[Admin] Approve a pending request and assign a specific serial number",
     )
@@ -368,7 +320,7 @@ class AdminCog(commands.Cog, name="Admin"):
         serial_number="The specific serial number to assign (must not be already issued)",
     )
     @is_admin()
-    async def cmd_assign(
+    async def serialadmin_assign(
         self,
         interaction: discord.Interaction,
         request_id: int,
@@ -461,17 +413,17 @@ class AdminCog(commands.Cog, name="Admin"):
             log.warning("Could not DM requester %s", requester.discord_id)
 
     # ------------------------------------------------------------------
-    # /addprinter / /printers
+    # /serialadmin addprinter / printers
     # ------------------------------------------------------------------
 
-    @app_commands.command(name="addprinter", description="[Admin] Create a new printer type")
+    @serialadmin.command(name="addprinter", description="[Admin] Create a new printer type")
     @app_commands.describe(
         identifier="1–3 character unique identifier (e.g. BBP). Will be uppercased.",
         name="Full display name (e.g. 'BabyBelt Pro')",
         description="Optional description of this printer type",
     )
     @is_admin()
-    async def cmd_addprinter(
+    async def serialadmin_addprinter(
         self,
         interaction: discord.Interaction,
         identifier: str,
@@ -491,7 +443,6 @@ class AdminCog(commands.Cog, name="Admin"):
         admin = await _get_or_create_user(interaction.user)
 
         async with get_session() as session:
-            # Check uniqueness
             existing_id = await session.scalar(
                 select(PrinterType).where(PrinterType.identifier == identifier)
             )
@@ -547,8 +498,8 @@ class AdminCog(commands.Cog, name="Admin"):
         )
         log.info("Admin %s created printer type %s (%s) tag_id=%s", interaction.user, name, identifier, tag_id)
 
-    @app_commands.command(name="printers", description="List all printer types")
-    async def cmd_printers(self, interaction: discord.Interaction) -> None:
+    @serialadmin.command(name="printers", description="List all printer types")
+    async def serialadmin_printers(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True)
 
         async with get_session() as session:

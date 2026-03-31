@@ -81,12 +81,12 @@ Moderators can review and act on requests through either Discord or the web inte
 
 **Viewing the queue**
 
-Run `/queue` in any channel. The bot responds with an ephemeral embed listing all pending requests, each with a link to the builder's forum thread.
+Run `/serialmod queue` in any channel. The bot responds with an ephemeral embed listing all pending requests, each with a link to the builder's forum thread.
 
 **Approving a request**
 
 ```
-/approve request_id:<id>
+/serialmod approve request_id:<id>
 ```
 
 Or click the **✅ Approve** button on the notification embed in the mod channel.
@@ -101,7 +101,7 @@ On approval the bot will:
 **Rejecting a request**
 
 ```
-/reject request_id:<id> reason:<optional reason>
+/serialmod reject request_id:<id> reason:<optional reason>
 ```
 
 Or click the **❌ Reject** button on the mod channel embed, which opens a modal for the rejection reason.
@@ -134,8 +134,8 @@ Navigate to **Config → Users** in the web UI.
 
 You can also use bot commands:
 ```
-/addmod @user     — promote to Moderator
-/removemod @user  — demote to User
+/serialadmin addmod @user     — promote to Moderator
+/serialadmin removemod @user  — demote to User
 ```
 
 ### Printer type management
@@ -162,7 +162,7 @@ Fill in the "Add Printer Type" form on the Config page. The bot will attempt to 
 If a serial needs to be revoked (e.g. the build was not genuine), navigate to the serial's detail page on the web app and use the **Rescind** form, providing a reason. Or use the bot:
 
 ```
-/rescind serial:<BBP-042> reason:<reason>
+/serialadmin rescind printer_type:BBP serial_number:42 reason:<reason>
 ```
 
 Rescinded serials remain visible in the registry but are marked as rescinded. The holder's Discord role is not automatically removed — do that manually if needed.
@@ -171,7 +171,7 @@ Rescinded serials remain visible in the registry but are marked as rescinded. Th
 
 Navigate to **Reservations** in the web UI to manage blocked serial numbers.
 
-**What reservations do:** Reserved numbers are skipped during automatic serial assignment. They can still be assigned explicitly (via the queue page Assign button or `/assign`). Use reservations for milestone numbers (100, 500, 1000), prototype units, contest prizes, etc.
+**What reservations do:** Reserved numbers are skipped during automatic serial assignment. They can still be assigned explicitly (via the queue page Assign button or `/serialadmin assign`). Use reservations for milestone numbers (100, 500, 1000), prototype units, contest prizes, etc.
 
 **Single reservation:** Use the "Reserve a Number" form — choose a printer type, enter the serial number, and optionally add a reason.
 
@@ -225,13 +225,7 @@ Store backups in a safe location. The database contains all users, serials, requ
 
 ### Transferring ownership
 
-Run the bot command:
-
-```
-/transferownership @newowner
-```
-
-This moves the Owner role to the target user. There can only be one owner at a time. After transfer you will be downgraded to Admin.
+Navigate to **Config** in the web UI and use the **Transfer Ownership** form. There can only be one owner at a time. After transfer you will be downgraded to Admin.
 
 ---
 
@@ -246,33 +240,27 @@ This moves the Owner role to the target user. There can only be one owner at a t
 | `/lookup printer_type:<type> serial_number:<n>` | Look up any issued serial number by type and number. Responds publicly. |
 | `/serialfork` | Show Serial Fork version, total serials issued (with per-type breakdown), and links to the GitHub repo and project page. |
 
-### Moderator commands
+### Moderator commands (`/serialmod`)
 
 | Command | Who | Description |
 |---------|-----|-------------|
-| `/approve request_id:<id>` | Moderator+ | Approve a pending request and issue the next serial number. |
-| `/reject request_id:<id> [reason:<text>]` | Moderator+ | Reject a request with an optional reason sent to the requester. |
-| `/queue` | Moderator+ | Show all pending requests as an ephemeral embed. |
+| `/serialmod approve request_id:<id>` | Moderator+ | Approve a pending request and issue the next serial number. |
+| `/serialmod reject request_id:<id> [reason:<text>]` | Moderator+ | Reject a request with an optional reason sent to the requester. |
+| `/serialmod queue` | Moderator+ | Show all pending requests as an ephemeral embed. |
 
-### Admin commands
-
-| Command | Who | Description |
-|---------|-----|-------------|
-| `/addmod @user` | Admin+ | Promote a user to Moderator. |
-| `/removemod @user` | Admin+ | Demote a Moderator back to User. |
-| `/rescind serial:<type-number> reason:<text>` | Admin+ | Revoke an issued serial. |
-| `/reserve printer_type:<type> serial_number:<n> [reason:<text>]` | Admin+ | Block a specific serial number from auto-assignment. |
-| `/unreserve printer_type:<type> serial_number:<n>` | Admin+ | Remove a reservation. |
-| `/reservations` | Admin+ | List all current reservations. |
-| `/assign request_id:<id> serial_number:<n>` | Admin+ | Manually assign a specific serial number to a request. |
-| `/addprinter identifier:<id> name:<name> [description:<text>]` | Admin+ | Create a new printer type and auto-create its forum tag. |
-| `/printers` | Anyone | List all configured printer types and their status. |
-
-### Owner commands
+### Admin commands (`/serialadmin`)
 
 | Command | Who | Description |
 |---------|-----|-------------|
-| `/transferownership @user` | Owner | Transfer the Owner role to another user. |
+| `/serialadmin addmod @user` | Admin+ | Promote a user to Moderator. |
+| `/serialadmin removemod @user` | Admin+ | Demote a Moderator back to User. |
+| `/serialadmin rescind printer_type:<type> serial_number:<n> reason:<text>` | Admin+ | Revoke an issued serial. |
+| `/serialadmin reserve printer_type:<type> serial_number:<n> [reason:<text>]` | Admin+ | Block a specific serial number from auto-assignment. |
+| `/serialadmin unreserve printer_type:<type> serial_number:<n>` | Admin+ | Remove a reservation. |
+| `/serialadmin reservations` | Admin+ | List all current reservations. |
+| `/serialadmin assign request_id:<id> serial_number:<n>` | Admin+ | Manually assign a specific serial number to a request. |
+| `/serialadmin addprinter identifier:<id> name:<name> [description:<text>]` | Admin+ | Create a new printer type and auto-create its forum tag. |
+| `/serialadmin printers` | Anyone | List all configured printer types and their status. |
 
 ---
 

@@ -1,5 +1,6 @@
 """
-Core serial number commands: /request, /approve, /reject, /lookup, /queue, /serialfork
+Core serial number commands: /request, /resubmit, /lookup, /serialfork
+Moderator commands grouped under /serialmod: approve, reject, queue
 """
 from __future__ import annotations
 
@@ -147,6 +148,11 @@ class SerialsCog(commands.Cog, name="Serials"):
     def settings(self):
         return self.bot.settings
 
+    serialmod = app_commands.Group(
+        name="serialmod",
+        description="Serial Fork moderator commands",
+    )
+
     # ------------------------------------------------------------------
     # /request
     # ------------------------------------------------------------------
@@ -253,29 +259,29 @@ class SerialsCog(commands.Cog, name="Serials"):
             log.warning("Mod notify channel %d not found", mod_channel_id)
 
     # ------------------------------------------------------------------
-    # /approve
+    # /serialmod approve
     # ------------------------------------------------------------------
 
-    @app_commands.command(name="approve", description="[Moderator] Approve a pending serial request")
+    @serialmod.command(name="approve", description="[Moderator] Approve a pending serial request")
     @app_commands.describe(request_id="The request ID to approve")
     @is_moderator()
-    async def cmd_approve(
+    async def serialmod_approve(
         self, interaction: discord.Interaction, request_id: int
     ) -> None:
         await interaction.response.defer(ephemeral=True)
         await _do_approve(interaction, request_id, self.bot)
 
     # ------------------------------------------------------------------
-    # /reject
+    # /serialmod reject
     # ------------------------------------------------------------------
 
-    @app_commands.command(name="reject", description="[Moderator] Reject a pending serial request")
+    @serialmod.command(name="reject", description="[Moderator] Reject a pending serial request")
     @app_commands.describe(
         request_id="The request ID to reject",
         reason="Reason for rejection (shown to the requester)",
     )
     @is_moderator()
-    async def cmd_reject(
+    async def serialmod_reject(
         self,
         interaction: discord.Interaction,
         request_id: int,
@@ -453,12 +459,12 @@ class SerialsCog(commands.Cog, name="Serials"):
                 req.discord_message_id = str(mod_msg.id)
 
     # ------------------------------------------------------------------
-    # /queue
+    # /serialmod queue
     # ------------------------------------------------------------------
 
-    @app_commands.command(name="queue", description="[Moderator] Show pending serial requests")
+    @serialmod.command(name="queue", description="[Moderator] Show pending serial requests")
     @is_moderator()
-    async def cmd_queue(self, interaction: discord.Interaction) -> None:
+    async def serialmod_queue(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True)
 
         async with get_session() as session:

@@ -189,7 +189,7 @@ Every setting can be placed in `config.toml` (snake_case key) or set as an envir
 
 | Setting | Env var | Default | Description |
 |---|---|---|---|
-| `serial_pad_width` | `SERIAL_PAD_WIDTH` | `3` | Minimum digit width for all serial numbers. `3` → `BB-001`; `4` → `BB-0001`. The number automatically expands beyond the pad width (e.g. serial 1000 displays as `BB-1000` with `serial_pad_width = 3`). Serial prefixes are set per printer type via `/addprinter` or the web UI. |
+| `serial_pad_width` | `SERIAL_PAD_WIDTH` | `3` | Minimum digit width for all serial numbers. `3` → `BB-001`; `4` → `BB-0001`. The number automatically expands beyond the pad width (e.g. serial 1000 displays as `BB-1000` with `serial_pad_width = 3`). Serial prefixes are set per printer type via `/serialadmin addprinter` or the web UI. |
 
 #### Bootstrap Owner
 
@@ -399,7 +399,7 @@ Find your Discord user ID: in Discord with Developer Mode enabled, right-click y
 
 On startup, if no owner exists yet, Serial Fork automatically creates this user with the Owner role. These settings are safe to leave in place permanently — they are ignored once an owner exists.
 
-After the owner account is created, log in to the web app with that Discord account to activate it, then manage all further roles from `/admin/users` or via bot commands (`/addmod`, `/removemod`).
+After the owner account is created, log in to the web app with that Discord account to activate it, then manage all further roles from `/admin/users` or via bot commands (`/serialadmin addmod`, `/serialadmin removemod`).
 
 ---
 
@@ -432,8 +432,8 @@ After syncing, type `/` in your Discord server to confirm the commands appear.
 
 1. In your build showcase forum channel, create a test post with a photo and the correct printer type tag applied, then run `/request` inside that thread — the slash command should appear in Discord's autocomplete
 2. Check the mod notify channel — you should see a notification embed with Approve/Reject buttons
-4. Click **Approve** — you should receive a DM with the issued serial number
-5. Run `/lookup 1` — you should see serial `BB-001` details
+3. Click **Approve** (or run `/serialmod approve request_id:<id>`) — you should receive a DM with the issued serial number
+4. Run `/lookup printer_type:BBP serial_number:1` — you should see the serial details
 
 ### Test the web app
 
@@ -452,7 +452,7 @@ After syncing, type `/` in your Discord server to confirm the commands appear.
 
 **Via bot (admin only):**
 ```
-/addmod @username
+/serialadmin addmod @username
 ```
 
 **Via web (admin only):**
@@ -466,7 +466,7 @@ Admin role can only be set via the web interface at `/admin/users`. There is int
 
 Moderators can review requests in two ways:
 
-**Via Discord:** Approval notifications appear in the mod notify channel with **Approve** and **Reject** buttons. Clicking Approve issues the next available serial. Clicking Reject opens a modal for an optional reason.
+**Via Discord:** Approval notifications appear in the mod notify channel with **Approve** and **Reject** buttons. Clicking Approve issues the next available serial. Clicking Reject opens a modal for an optional reason. Moderators can also act directly with `/serialmod approve` and `/serialmod reject`, or view the queue with `/serialmod queue`.
 
 **Via web:** Visit `/admin/queue`. Each pending request shows the photo, model, and submitter. Use the **Approve** button for automatic serial assignment, or enter a specific serial number in the **Assign #** field (admin only).
 
@@ -476,15 +476,15 @@ Admins can reserve serial numbers to prevent them from being auto-assigned (e.g.
 
 **Via bot:**
 ```
-/reserve 100 "Milestone - 100th build"
-/reserve 500
-/unreserve 100
-/reservations          # list all reserved numbers
+/serialadmin reserve printer_type:BBP serial_number:100 reason:"Milestone - 100th build"
+/serialadmin reserve printer_type:BBP serial_number:500
+/serialadmin unreserve printer_type:BBP serial_number:100
+/serialadmin reservations          # list all reserved numbers
 ```
 
 **Via web:** Visit `/admin/reservations`. Enter a number and optional reason in the form on the right.
 
-Reserved numbers are skipped during automatic approval. They can still be explicitly assigned using `/assign` (bot) or the **Assign #** field in the web queue (admin only).
+Reserved numbers are skipped during automatic approval. They can still be explicitly assigned using `/serialadmin assign` (bot) or the **Assign #** field in the web queue (admin only).
 
 ### Assigning Specific Serial Numbers
 
@@ -492,9 +492,9 @@ To assign a specific serial number to a pending request (e.g. a reserved milesto
 
 **Via bot (admin only):**
 ```
-/assign <request_id> <serial_number>
+/serialadmin assign request_id:<id> serial_number:<n>
 ```
-Example: `/assign 42 100` assigns serial `BB-100` to request `#42`.
+Example: `/serialadmin assign request_id:42 serial_number:100` assigns serial `BBP-100` to request `#42`.
 
 **Via web (admin only):**
 On the queue page, enter the desired number in the **Assign #** input next to the request and click the button.
@@ -507,7 +507,7 @@ If a serial needs to be revoked (fraudulent build, rule violation, etc.):
 
 **Via bot (admin only):**
 ```
-/rescind 42 "Build did not meet community standards"
+/serialadmin rescind printer_type:BBP serial_number:42 reason:"Build did not meet community standards"
 ```
 
 **Via web (admin only):**
