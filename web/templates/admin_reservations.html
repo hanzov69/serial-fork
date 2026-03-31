@@ -14,6 +14,49 @@
   Admins can still assign reserved numbers explicitly via the queue page or <code>/assign</code>.
 </p>
 
+{% if import_results %}
+  {% if import_results.imported %}
+  <div class="alert alert-success" style="margin-bottom:1rem">
+    ✅ Imported {{ import_results.imported|length }} reservation{{ 's' if import_results.imported|length != 1 }}:
+    {% for r in import_results.imported %}
+      <span class="mono badge" style="margin:0 0.15rem">{{ r.display }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% if import_results.failed %}
+  <div style="margin-bottom:1.5rem">
+    <p style="color:var(--danger); font-size:0.875rem; font-weight:600; margin-bottom:0.5rem">
+      ⚠️ {{ import_results.failed|length }} row{{ 's' if import_results.failed|length != 1 }} could not be imported:
+    </p>
+    <table class="serial-table">
+      <thead>
+        <tr>
+          <th>Row</th>
+          <th>Identifier</th>
+          <th>Serial #</th>
+          <th>Reason</th>
+          <th>Error</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in import_results.failed %}
+        <tr>
+          <td class="muted mono">{{ f.row }}</td>
+          <td class="mono">{{ f.identifier }}</td>
+          <td class="mono">{{ f.serial_number }}</td>
+          <td class="muted">{{ f.reason or '—' }}</td>
+          <td style="color:var(--danger)">{{ f.error }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  {% if not import_results.imported and not import_results.failed %}
+  <div class="alert alert-warning" style="margin-bottom:1rem">No rows found in the uploaded file.</div>
+  {% endif %}
+{% endif %}
+
 <div class="detail-grid" style="grid-template-columns: 1fr 340px">
   <div>
     {% if reservations %}
@@ -54,7 +97,7 @@
     {% endif %}
   </div>
 
-  <aside>
+  <aside style="display:flex; flex-direction:column; gap:1rem">
     <div class="info-card">
       <h3 style="margin-bottom:1rem; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted)">
         Reserve a Number
@@ -86,6 +129,26 @@
                  class="input-full" placeholder="e.g. Milestone number">
         </div>
         <button type="submit" class="btn btn-primary">Reserve</button>
+      </form>
+    </div>
+
+    <div class="info-card">
+      <h3 style="margin-bottom:0.5rem; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted)">
+        Bulk Import (CSV)
+      </h3>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem">
+        Upload a CSV with columns <code>identifier</code>, <code>serial_number</code>,
+        and optionally <code>reason</code>. Collisions are skipped and reported.
+        <a href="/static/reservations_example.csv" download style="display:inline-block; margin-top:0.3rem">
+          Download example CSV
+        </a>
+      </p>
+      <form method="post" action="/admin/reservations/import"
+            enctype="multipart/form-data"
+            style="display:flex; flex-direction:column; gap:0.6rem">
+        <input type="file" name="file" accept=".csv,text/csv" required
+               style="font-size:0.8rem; color:var(--text)">
+        <button type="submit" class="btn btn-primary">Import</button>
       </form>
     </div>
   </aside>

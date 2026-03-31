@@ -4,6 +4,7 @@ Moderator and admin routes: review queue, user management, reservations, printer
 from __future__ import annotations
 
 import asyncio
+import csv
 import io
 import logging
 import os
@@ -13,7 +14,7 @@ import tempfile
 import zipfile
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -711,6 +712,136 @@ async def create_reservation(
         reserved_by_id=current_user.id,
     ))
     return RedirectResponse("/admin/reservations", status_code=303)
+
+
+@router.post("/reservations/import", response_class=HTMLResponse)
+async def import_reservations(
+    file: UploadFile = File(...),
+    request: Request = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    # ── Parse CSV ──────────────────────────────────────────────────
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8-sig")  # strip BOM if present
+    except UnicodeDecodeError:
+        text = raw.decode("latin-1")
+
+    reader = csv.DictReader(io.StringIO(text))
+    # Normalise header names: lowercase + strip whitespace
+    if reader.fieldnames is None:
+        raise HTTPException(status_code=400, detail="CSV file is empty or missing a header row")
+    reader.fieldnames = [f.strip().lower() for f in reader.fieldnames]
+
+    required = {"identifier", "serial_number"}
+    if not required.issubset(set(reader.fieldnames)):
+        raise HTTPException(
+            status_code=400,
+            detail=f"CSV must have columns: identifier, serial_number (and optionally: reason). "
+                   f"Found: {', '.join(reader.fieldnames)}",
+        )
+
+    rows = list(reader)
+
+    # ── Build identifier → PrinterType lookup ─────────────────────
+    pt_result = await db.execute(select(PrinterType).where(PrinterType.is_active == True))
+    pt_by_id_str = {pt.identifier.upper(): pt for pt in pt_result.scalars()}
+
+    # ── Process rows ───────────────────────────────────────────────
+    imported: list[dict] = []
+    failed:   list[dict] = []
+
+    for line_num, row in enumerate(rows, start=2):  # 2 because row 1 is the header
+        identifier   = (row.get("identifier") or "").strip().upper()
+        serial_raw   = (row.get("serial_number") or "").strip()
+        reason       = (row.get("reason") or "").strip() or None
+
+        def _fail(msg: str):
+            failed.append({
+                "row":           line_num,
+                "identifier":    identifier or "—",
+                "serial_number": serial_raw or "—",
+                "reason":        reason or "",
+                "error":         msg,
+            })
+
+        if not identifier:
+            _fail("Missing identifier")
+            continue
+
+        if not serial_raw:
+            _fail("Missing serial_number")
+            continue
+
+        try:
+            serial_number = int(serial_raw)
+        except ValueError:
+            _fail(f"serial_number must be an integer, got '{serial_raw}'")
+            continue
+
+        if serial_number < 1:
+            _fail("serial_number must be ≥ 1")
+            continue
+
+        pt = pt_by_id_str.get(identifier)
+        if pt is None:
+            _fail(f"Unknown printer type '{identifier}'")
+            continue
+
+        if not await is_serial_number_free(db, pt.id, serial_number):
+            _fail(f"{pt.identifier}-{serial_number} is already issued")
+            continue
+
+        existing = await db.scalar(
+            select(SerialReservation)
+            .where(SerialReservation.printer_type_id == pt.id)
+            .where(SerialReservation.serial_number == serial_number)
+        )
+        if existing:
+            _fail(f"{pt.identifier}-{serial_number} is already reserved")
+            continue
+
+        db.add(SerialReservation(
+            printer_type_id=pt.id,
+            serial_number=serial_number,
+            reason=reason,
+            reserved_by_id=current_user.id,
+        ))
+        imported.append({
+            "display": pt.format_serial(serial_number, request.app.state.settings.serial_pad_width),
+            "reason":  reason or "",
+        })
+
+    await db.flush()
+
+    # ── Re-render the reservations page with import results ────────
+    reservations_result = await db.execute(
+        select(SerialReservation)
+        .options(
+            selectinload(SerialReservation.printer_type),
+            selectinload(SerialReservation.reserved_by),
+        )
+        .order_by(SerialReservation.printer_type_id, SerialReservation.serial_number)
+    )
+    reservations_list = list(reservations_result.scalars())
+
+    pt_list_result = await db.execute(
+        select(PrinterType).where(PrinterType.is_active == True).order_by(PrinterType.identifier)
+    )
+    printer_types = list(pt_list_result.scalars())
+
+    return _templates(request).TemplateResponse(
+        request,
+        "admin_reservations.html",
+        {
+            "reservations":   reservations_list,
+            "printer_types":  printer_types,
+            "current_user":   current_user,
+            "settings":       request.app.state.settings,
+            "import_results": {"imported": imported, "failed": failed},
+        },
+    )
 
 
 @router.post("/reservations/{reservation_id}/delete")

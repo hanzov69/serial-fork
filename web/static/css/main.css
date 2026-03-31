@@ -475,6 +475,11 @@ a:hover { text-decoration: underline; }
   border-color: var(--warning);
   color: var(--text);
 }
+.alert-success {
+  background: rgba(61, 201, 122, 0.1);
+  border-color: var(--success);
+  color: var(--text);
+}
 
 /* ── Empty states ──────────────────────────────────────── */
 .empty-state       { color: var(--text-muted); padding: 2rem 0; }

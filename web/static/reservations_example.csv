@@ -1,0 +1,6 @@
+identifier,serial_number,reason
+BBP,100,Milestone — first 100 builds
+BBP,200,Reserved for contest winner
+BBP,500,Milestone — 500 builds
+CC,1,Prototype unit
+CC,50,Reserved for community event
