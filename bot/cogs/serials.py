@@ -312,6 +312,7 @@ class SerialsCog(commands.Cog, name="Serials"):
                     selectinload(Serial.holder),
                     selectinload(Serial.issued_by),
                     selectinload(Serial.rescinded_by),
+                    selectinload(Serial.request),
                 )
             )
             serial = result.scalar_one_or_none()

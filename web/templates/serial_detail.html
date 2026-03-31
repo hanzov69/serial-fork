@@ -84,6 +84,14 @@
         <span class="info-label">Approved by</span>
         <span class="info-value">{{ serial.issued_by.username }}</span>
       </div>
+      {% if serial.request and serial.request.post_url %}
+      <div class="info-row">
+        <span class="info-label">Build Post</span>
+        <span class="info-value">
+          <a href="{{ serial.request.post_url }}" target="_blank" rel="noopener">View Thread ↗</a>
+        </span>
+      </div>
+      {% endif %}
     </div>
 
     <a href="/serials" class="btn btn-sm back-link" style="margin-top:1rem; display:inline-block">&larr; All Serials</a>

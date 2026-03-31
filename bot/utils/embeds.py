@@ -111,6 +111,8 @@ def serial_lookup(serial: Serial, settings: Settings) -> discord.Embed:
     embed.add_field(name="Printer Type", value=serial.printer_type.name, inline=True)
     embed.add_field(name="Issued", value=_ts(serial.issued_at), inline=True)
     embed.add_field(name="Holder", value=f"<@{serial.holder.discord_id}>", inline=True)
+    if serial.request and serial.request.post_url:
+        embed.add_field(name="Build Post", value=f"[View Thread]({serial.request.post_url})", inline=True)
     if not serial.is_active:
         embed.add_field(name="Rescinded", value=_ts(serial.rescinded_at), inline=True)
         if serial.rescind_reason:
