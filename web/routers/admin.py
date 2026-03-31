@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -445,12 +445,21 @@ async def config_page(
         select(PrinterType).order_by(PrinterType.identifier)
     )
     printer_types = list(result.scalars())
+
+    # Serial counts per printer type (to gate the delete button)
+    counts_result = await db.execute(
+        select(Serial.printer_type_id, func.count(Serial.id))
+        .group_by(Serial.printer_type_id)
+    )
+    serial_counts: dict[int, int] = {row[0]: row[1] for row in counts_result}
+
     settings = request.app.state.settings
     return _templates(request).TemplateResponse(
         request,
         "admin_config.html",
         {
             "printer_types": printer_types,
+            "serial_counts": serial_counts,
             "current_user": current_user,
             "forum_channel_id": await get_config(db, "discord_forum_channel_id") or str(settings.discord_forum_channel_id),
             "mod_notify_channel_id": await get_config(db, "discord_mod_notify_channel_id") or str(settings.discord_mod_notify_channel_id),
@@ -514,7 +523,9 @@ async def create_printer_type(
 
     # Auto-create the forum tag for this printer type.
     settings = request.app.state.settings
-    tag_id = await create_forum_tag(settings, name.strip())
+    raw_channel_id = await get_config(db, "discord_forum_channel_id")
+    effective_channel_id = int(raw_channel_id) if raw_channel_id else settings.discord_forum_channel_id
+    tag_id = await create_forum_tag(settings, name.strip(), channel_id=effective_channel_id)
     if tag_id is None:
         log.warning("Could not auto-create forum tag for printer type '%s'", name.strip())
 
@@ -585,6 +596,35 @@ async def toggle_printer_type(
     if pt is None:
         raise HTTPException(status_code=404, detail="Printer type not found")
     pt.is_active = not pt.is_active
+    return RedirectResponse("/admin/config", status_code=303)
+
+
+@router.post("/printers/{printer_id}/delete")
+async def delete_printer_type(
+    printer_id: int,
+    request: Request = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    pt = await db.get(PrinterType, printer_id)
+    if pt is None:
+        raise HTTPException(status_code=404, detail="Printer type not found")
+
+    serial_count = await db.scalar(
+        select(func.count(Serial.id)).where(Serial.printer_type_id == printer_id)
+    )
+    if serial_count:
+        raise HTTPException(status_code=409, detail=f"Cannot delete: {serial_count} serial(s) have been issued for this printer type")
+
+    pending_count = await db.scalar(
+        select(func.count(SerialRequest.id))
+        .where(SerialRequest.printer_type_id == printer_id)
+        .where(SerialRequest.status == RequestStatus.pending)
+    )
+    if pending_count:
+        raise HTTPException(status_code=409, detail=f"Cannot delete: {pending_count} pending request(s) exist for this printer type")
+
+    await db.delete(pt)
     return RedirectResponse("/admin/config", status_code=303)
 
 

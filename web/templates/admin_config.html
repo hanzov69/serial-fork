@@ -115,13 +115,19 @@
               <span class="badge badge-rescinded">Inactive</span>
             {% endif %}
           </td>
-          <td>
+          <td style="display:flex; gap:0.4rem; flex-wrap:wrap">
             <form method="post" action="/admin/printers/{{ pt.id }}/toggle"
                   onsubmit="return confirm('{{ 'Deactivate' if pt.is_active else 'Reactivate' }} {{ pt.name }}?')">
               <button type="submit" class="btn btn-sm">
                 {{ 'Deactivate' if pt.is_active else 'Reactivate' }}
               </button>
             </form>
+            {% if not serial_counts.get(pt.id) %}
+            <form method="post" action="/admin/printers/{{ pt.id }}/delete"
+                  onsubmit="return confirm('Permanently delete {{ pt.name }} ({{ pt.identifier }})? This cannot be undone.')">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+            {% endif %}
           </td>
         </tr>
         {% else %}

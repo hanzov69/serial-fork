@@ -28,13 +28,18 @@ _RED = 0xED4245
 async def create_forum_tag(
     settings: Settings,
     tag_name: str,
+    channel_id: int | None = None,
 ) -> str | None:
     """
     Add a new available tag to the forum channel and return its snowflake ID.
     Fetches the current tag list, appends the new tag, PATCHes the channel,
     then returns the ID Discord assigned to it.  Returns None on failure.
+
+    channel_id overrides settings.discord_forum_channel_id (use when the
+    effective channel is stored as a DB config override).
     """
-    channel_url = f"{_DISCORD_API}/channels/{settings.discord_forum_channel_id}"
+    effective_channel_id = channel_id or settings.discord_forum_channel_id
+    channel_url = f"{_DISCORD_API}/channels/{effective_channel_id}"
     headers = {"Authorization": f"Bot {settings.discord_token}"}
     try:
         async with httpx.AsyncClient(timeout=10) as client:
