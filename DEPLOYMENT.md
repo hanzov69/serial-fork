@@ -160,7 +160,7 @@ Every setting can be placed in `config.toml` (snake_case key) or set as an envir
 |---|---|---|---|
 | `discord_token` | `DISCORD_TOKEN` | **Yes** | Bot token from Discord Developer Portal → Bot → Token |
 | `discord_guild_id` | `DISCORD_GUILD_ID` | **Yes** | Numeric ID of the Discord server the bot operates in |
-| `discord_request_channel_id` | `DISCORD_REQUEST_CHANNEL_ID` | **Yes** | Channel where users submit `/request` commands |
+| `discord_forum_channel_id` | `DISCORD_FORUM_CHANNEL_ID` | **Yes** | Forum channel where users post builds and run `/request` from their thread |
 | `discord_mod_notify_channel_id` | `DISCORD_MOD_NOTIFY_CHANNEL_ID` | **Yes** | Channel where moderators receive approval notification embeds |
 
 #### Discord — OAuth2 (web login)
@@ -430,9 +430,8 @@ After syncing, type `/` in your Discord server to confirm the commands appear.
 
 ### Test the bot
 
-1. In your request channel, type `/request` — the slash command should appear in Discord's autocomplete
-2. Submit a test request with a printer model name
-3. Check the mod notify channel — you should see a notification embed with Approve/Reject buttons
+1. In your build showcase forum channel, create a test post with a photo and the correct printer type tag applied, then run `/request` inside that thread — the slash command should appear in Discord's autocomplete
+2. Check the mod notify channel — you should see a notification embed with Approve/Reject buttons
 4. Click **Approve** — you should receive a DM with the issued serial number
 5. Run `/lookup 1` — you should see serial `BB-001` details
 
