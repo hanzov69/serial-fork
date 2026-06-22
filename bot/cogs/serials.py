@@ -321,8 +321,10 @@ class SerialsCog(commands.Cog, name="Serials"):
                     selectinload(Serial.rescinded_by),
                     selectinload(Serial.request),
                 )
+                # Prefer the active row; a reissued number keeps older rescinded rows.
+                .order_by(Serial.rescinded_at.is_(None).desc(), Serial.issued_at.desc())
             )
-            serial = result.scalar_one_or_none()
+            serial = result.scalars().first()
 
         if serial is None:
             display = f"{printer_type.upper()}-{serial_number:03d}"

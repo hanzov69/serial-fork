@@ -11,11 +11,13 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -41,6 +43,7 @@ class AuditAction(str, enum.Enum):
     approve = "approve"
     reject = "reject"
     rescind = "rescind"
+    delete = "delete"
     promote = "promote"
     demote = "demote"
     edit = "edit"
@@ -153,8 +156,16 @@ class SerialRequest(Base):
 class Serial(Base):
     __tablename__ = "serials"
     __table_args__ = (
-        # Each (printer_type, serial_number) pair must be unique — BBP-001 and CC-001 are distinct
-        UniqueConstraint("printer_type_id", "serial_number", name="uq_serial_type_number"),
+        # Only one ACTIVE (non-rescinded) serial may exist per (printer_type, serial_number).
+        # BBP-001 and CC-001 are distinct. Rescinded rows are kept for history and do NOT
+        # block the number from being reissued — a partial unique index ignores them.
+        Index(
+            "uq_serial_type_number_active",
+            "printer_type_id",
+            "serial_number",
+            unique=True,
+            sqlite_where=text("rescinded_at IS NULL"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

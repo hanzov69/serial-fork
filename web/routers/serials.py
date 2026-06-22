@@ -85,8 +85,11 @@ async def serial_detail(
             selectinload(Serial.rescinded_by),
             selectinload(Serial.request).selectinload(SerialRequest.requester),
         )
+        # A number may have one active row plus older rescinded rows (kept for
+        # history). Show the active one if present, else the most recent.
+        .order_by(Serial.rescinded_at.is_(None).desc(), Serial.issued_at.desc())
     )
-    serial = result.scalar_one_or_none()
+    serial = result.scalars().first()
     if serial is None:
         raise HTTPException(status_code=404, detail="Serial not found")
 
