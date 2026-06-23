@@ -12,11 +12,11 @@
   <section class="info-section">
     <h2 class="info-section-title">How to Request a Serial Number</h2>
     <ol class="info-steps">
-      <li>Join the Discord server using the invite link below.</li>
-      <li>Complete your build and post about it in the build showcase forum channel. Make sure to include photos or videos of your build and apply the correct printer type tag to your post.</li>
-      <li>Inside your forum post thread, run <code>/request</code>. The bot will detect your printer type automatically from the thread's tag.</li>
-      <li>A moderator will review your submission. You will receive a direct message when it is approved or rejected, and a congratulations message will be posted in your thread.</li>
-      <li>If rejected, you can update your post and re-submit using <code>/resubmit</code> inside the same thread, or from the <em>My Requests</em> page.</li>
+      <li><span>Join the Discord server using the invite link below.</span></li>
+      <li><span>Complete your build and post about it in the build showcase forum channel. Make sure to include photos or videos of your build and apply the correct printer type tag to your post.</span></li>
+      <li><span>Inside your forum post thread, run <code>/request</code>. The bot will detect your printer type automatically from the thread's tag.</span></li>
+      <li><span>A moderator will review your submission. You will receive a direct message when it is approved or rejected, and a congratulations message will be posted in your thread.</span></li>
+      <li><span>If rejected, you can update your post and re-submit using <code>/resubmit</code> inside the same thread, or from the <em>My Requests</em> page.</span></li>
     </ol>
   </section>
 
@@ -43,9 +43,9 @@
   <section class="info-section">
     <h2 class="info-section-title">Credits</h2>
     <ul class="info-credits">
-      <li><a href="https://forkweld.com/projects/serial-fork/" target="_blank" rel="noopener">MrChristian @ ForkWeld</a> — Project description and stuff. Guilty party.</li>
-      <li><a href="https://github.com/RobMink/BabyBeltPro" target="_blank" rel="noopener">BabyBelt Pro Github</a> — Code, STLs, BOMs.. all the BabyBelt Pro Goodness</li>
-      <li><a href="https://www.printcepts.com/" target="_blank" rel="noopener">Printcepts</a> — Company home of Rob Mink, the creator of the BabyBelt</li>
+      <li><span><a href="https://forkweld.com/projects/serial-fork/" target="_blank" rel="noopener">MrChristian @ ForkWeld</a> — Project description and stuff. Guilty party.</span></li>
+      <li><span><a href="https://github.com/RobMink/BabyBeltPro" target="_blank" rel="noopener">BabyBelt Pro Github</a> — Code, STLs, BOMs.. all the BabyBelt Pro Goodness</span></li>
+      <li><span><a href="https://www.printcepts.com/" target="_blank" rel="noopener">Printcepts</a> — Company home of Rob Mink, the creator of the BabyBelt</span></li>
     </ul>
   </section>
 
@@ -84,6 +84,10 @@
   gap: 1rem;
   font-size: 0.95rem;
   line-height: 1.6;
+}
+.info-steps li > span {
+  flex: 1;
+  min-width: 0;
 }
 .info-steps li::before {
   content: counter(steps);
@@ -126,6 +130,10 @@
   align-items: center;
   gap: 0.6rem;
   font-size: 0.9rem;
+}
+.info-credits li > span {
+  flex: 1;
+  min-width: 0;
 }
 .info-credits li::before {
   content: '';
