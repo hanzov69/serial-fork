@@ -8,7 +8,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from sqlalchemy import event, func, select
+from sqlalchemy import event, select
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -67,8 +67,14 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 async def next_serial_number(session: AsyncSession, printer_type_id: int) -> int:
     """
-    Compute the next available serial number for a given printer type,
-    skipping any reserved numbers.
+    Compute the next available serial number for a given printer type:
+    the lowest positive integer that has no active serial and is not reserved.
+
+    This fills earlier gaps in the sequence (e.g. left behind when a
+    reservation is removed, when numbers were skipped, or when a serial was
+    rescinded) before continuing past the current maximum, rather than only
+    ever incrementing the highest issued number. Rescinded serials are kept
+    for history but their numbers are free to reuse.
 
     Must be called within an open session so the read and the subsequent Serial
     insert happen in the same SQLite write transaction, preventing races.
@@ -78,20 +84,19 @@ async def next_serial_number(session: AsyncSession, printer_type_id: int) -> int
     """
     from shared.models import Serial, SerialReservation  # avoid circular import
 
-    max_issued = await session.scalar(
-        select(func.max(Serial.serial_number)).where(Serial.printer_type_id == printer_type_id)
-    ) or 0
-
+    issued_rows = await session.execute(
+        select(Serial.serial_number)
+        .where(Serial.printer_type_id == printer_type_id)
+        .where(Serial.rescinded_at.is_(None))  # rescinded numbers are free to reuse
+    )
     reserved_rows = await session.execute(
         select(SerialReservation.serial_number)
         .where(SerialReservation.printer_type_id == printer_type_id)
-        .where(SerialReservation.serial_number > max_issued)
-        .order_by(SerialReservation.serial_number)
     )
-    reserved: set[int] = set(reserved_rows.scalars().all())
+    taken: set[int] = set(issued_rows.scalars().all()) | set(reserved_rows.scalars().all())
 
-    candidate = max_issued + 1
-    while candidate in reserved:
+    candidate = 1
+    while candidate in taken:
         candidate += 1
 
     return candidate
@@ -101,7 +106,8 @@ async def is_serial_number_free(
     session: AsyncSession, printer_type_id: int, serial_number: int
 ) -> bool:
     """
-    Return True if the given (printer_type_id, serial_number) pair has not been issued.
+    Return True if the given (printer_type_id, serial_number) pair has no ACTIVE
+    serial. Rescinded serials don't count — their number is free to reissue.
     BBP-042 and CC-042 are checked independently.
     """
     from shared.models import Serial
@@ -110,6 +116,7 @@ async def is_serial_number_free(
         select(Serial)
         .where(Serial.printer_type_id == printer_type_id)
         .where(Serial.serial_number == serial_number)
+        .where(Serial.rescinded_at.is_(None))
     )
     return existing is None
 

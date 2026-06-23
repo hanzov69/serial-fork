@@ -43,14 +43,21 @@
       </div>
     {% endif %}
 
-    {% if current_user and current_user.is_admin and serial.is_active %}
+    {% if current_user and current_user.is_admin %}
       <div class="detail-section admin-actions">
         <h3>Admin Actions</h3>
-        <form method="post" action="/admin/serials/{{ serial.id }}/rescind"
-              onsubmit="return confirm('Rescind {{ display }}? This cannot be undone.')">
-          <input type="text" name="reason" placeholder="Reason for rescinding" required class="input-full">
-          <button type="submit" class="btn btn-danger" style="margin-top:0.5rem">Rescind Serial</button>
-        </form>
+        {% if serial.is_active %}
+          <form method="post" action="/admin/serials/{{ serial.id }}/rescind"
+                onsubmit="return confirm('Rescind {{ display }}? This cannot be undone.')">
+            <input type="text" name="reason" placeholder="Reason for rescinding" required class="input-full">
+            <button type="submit" class="btn btn-danger" style="margin-top:0.5rem">Rescind Serial</button>
+          </form>
+        {% else %}
+          <form method="post" action="/admin/serials/{{ serial.id }}/delete"
+                onsubmit="return confirm('Permanently delete {{ display }}? This removes the record entirely and returns the request to the queue. This cannot be undone.')">
+            <button type="submit" class="btn btn-danger">Delete Serial Record</button>
+          </form>
+        {% endif %}
       </div>
     {% endif %}
   </div>

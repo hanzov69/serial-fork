@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -430,6 +430,62 @@ async def rescind_serial(
     identifier = serial.printer_type.identifier
     snum = serial.serial_number
     return RedirectResponse(f"/serial/{identifier}/{snum}", status_code=303)
+
+
+@router.post("/serials/{serial_id}/delete")
+async def delete_serial(
+    serial_id: int,
+    request: Request = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """
+    Permanently delete a serial record (e.g. to clean up an accidental issuance).
+    The serial must be rescinded first — this guards against deleting a serial
+    out from under an active holder. The originating request is reverted to
+    pending so it returns to the review queue, and audit-log rows that referenced
+    the serial are unlinked (kept for actor history).
+    """
+    result = await db.execute(
+        select(Serial)
+        .where(Serial.id == serial_id)
+        .options(selectinload(Serial.printer_type))
+    )
+    serial = result.scalar_one_or_none()
+
+    if serial is None:
+        raise HTTPException(status_code=404, detail="Serial not found")
+    if serial.is_active:
+        raise HTTPException(
+            status_code=409,
+            detail="Rescind the serial before deleting it.",
+        )
+
+    label = f"{serial.printer_type.identifier}-{serial.serial_number}"
+    request_id = serial.request_id
+
+    # Unlink audit-log references so the FK doesn't block deletion.
+    await db.execute(
+        update(AuditLog).where(AuditLog.serial_id == serial_id).values(serial_id=None)
+    )
+
+    # Return the originating request to the queue so the system stays consistent
+    # (no approved-but-serial-less request lingering).
+    req = await db.get(SerialRequest, request_id)
+    if req is not None:
+        req.status = RequestStatus.pending
+        req.reviewed_at = None
+        req.reviewed_by_id = None
+        req.rejection_reason = None
+
+    db.add(AuditLog(
+        actor_id=current_user.id,
+        action="delete",
+        details=f"deleted serial {label} (request_id={request_id} returned to queue)",
+    ))
+
+    await db.delete(serial)
+    return RedirectResponse("/serials", status_code=303)
 
 
 # ------------------------------------------------------------------

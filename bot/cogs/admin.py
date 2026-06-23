@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 import discord
 from discord import app_commands
 from discord.ext import commands
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
 from bot.utils.checks import is_admin
@@ -141,19 +141,15 @@ class AdminCog(commands.Cog, name="Admin"):
                 .join(PrinterType, Serial.printer_type_id == PrinterType.id)
                 .where(PrinterType.identifier == printer_type.upper())
                 .where(Serial.serial_number == serial_number)
+                .where(Serial.rescinded_at.is_(None))  # only the active row can be rescinded
                 .options(selectinload(Serial.printer_type))
             )
             serial = result.scalar_one_or_none()
 
             if serial is None:
                 await interaction.followup.send(
-                    f"No serial found for `{printer_type.upper()}-{serial_number:03d}`.", ephemeral=True
-                )
-                return
-
-            if not serial.is_active:
-                await interaction.followup.send(
-                    f"Serial `{serial.display(self.settings.serial_pad_width, self.settings.serial_delimiter)}` is already rescinded.",
+                    f"No active serial found for `{printer_type.upper()}-{serial_number:03d}` "
+                    f"(it may already be rescinded).",
                     ephemeral=True,
                 )
                 return
@@ -165,6 +161,78 @@ class AdminCog(commands.Cog, name="Admin"):
             display = serial.display(self.settings.serial_pad_width, self.settings.serial_delimiter)
 
         await interaction.followup.send(f"Serial **{display}** has been rescinded.", ephemeral=True)
+
+    # ------------------------------------------------------------------
+    # /serialadmin delete
+    # ------------------------------------------------------------------
+
+    @serialadmin.command(
+        name="delete",
+        description="[Admin] Permanently delete a rescinded serial record (e.g. an accidental issuance)",
+    )
+    @app_commands.describe(
+        printer_type="The printer type identifier (e.g. BBP, CC)",
+        serial_number="The numeric part of the serial to delete (must be rescinded first)",
+    )
+    @app_commands.autocomplete(printer_type=_printer_type_autocomplete)
+    @is_admin()
+    async def serialadmin_delete(
+        self,
+        interaction: discord.Interaction,
+        printer_type: str,
+        serial_number: int,
+    ) -> None:
+        await interaction.response.defer(ephemeral=True)
+        admin = await _get_or_create_user(interaction.user)
+
+        async with get_session() as session:
+            result = await session.execute(
+                select(Serial)
+                .join(PrinterType, Serial.printer_type_id == PrinterType.id)
+                .where(PrinterType.identifier == printer_type.upper())
+                .where(Serial.serial_number == serial_number)
+                .where(Serial.rescinded_at.is_not(None))  # only rescinded rows may be deleted
+                .options(selectinload(Serial.printer_type))
+                .order_by(Serial.issued_at.desc())
+            )
+            serial = result.scalars().first()
+
+            if serial is None:
+                await interaction.followup.send(
+                    f"No rescinded serial found for `{printer_type.upper()}-{serial_number:03d}`. "
+                    f"Rescind it first before deleting.",
+                    ephemeral=True,
+                )
+                return
+
+            display = serial.display(self.settings.serial_pad_width, self.settings.serial_delimiter)
+            label = f"{serial.printer_type.identifier}-{serial.serial_number}"
+            request_id = serial.request_id
+
+            # Unlink audit-log references so the FK doesn't block deletion.
+            await session.execute(
+                update(AuditLog).where(AuditLog.serial_id == serial.id).values(serial_id=None)
+            )
+
+            # Return the originating request to the queue so nothing dangles.
+            req = await session.get(SerialRequest, request_id)
+            if req is not None:
+                req.status = RequestStatus.pending
+                req.reviewed_at = None
+                req.reviewed_by_id = None
+                req.rejection_reason = None
+
+            session.add(AuditLog(
+                actor_id=admin.id,
+                action="delete",
+                details=f"deleted serial {label} (request_id={request_id} returned to queue)",
+            ))
+            await session.delete(serial)
+
+        await interaction.followup.send(
+            f"Serial record **{display}** has been deleted and request `#{request_id}` returned to the queue.",
+            ephemeral=True,
+        )
 
     # ------------------------------------------------------------------
     # /serialadmin reserve / unreserve / reservations
